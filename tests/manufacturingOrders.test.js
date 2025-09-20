@@ -27,16 +27,10 @@ describe('Manufacturing Orders Lifecycle', () => {
     expect(res.body.data.status).toBe('in_progress');
   });
 
-  it('requests close', async () => {
-    const res = await auth(api.post(`/mos/${moId}/request-close`));
-    expectStatus(res,200);
-    expect(res.body.data.status).toBe('to_close');
-  });
-
-  it('completes MO', async () => {
+  it('completes MO directly from in_progress', async () => {
     const res = await auth(api.post(`/mos/${moId}/complete`));
     expectStatus(res,200);
-    expect(res.body.data.status).toBe('not_assigned');
+    expect(res.body.data.status).toBe('done');
   });
 
   it('fetches cost report', async () => {
@@ -45,8 +39,8 @@ describe('Manufacturing Orders Lifecycle', () => {
     expect(res.body.data.total_cost).toBeDefined();
   });
 
-  it('lists MOs filtered by status=not_assigned', async () => {
-    const res = await auth(api.get('/mos').query({ status: 'not_assigned' }));
+  it('lists MOs filtered by status=done', async () => {
+    const res = await auth(api.get('/mos').query({ status: 'done' }));
     expectStatus(res,200);
     expect(res.body.data.some(m=>m.id === moId)).toBe(true);
   });

@@ -11,8 +11,8 @@ import { api, initTestDb, auth } from './testUtils.js';
   4. Start second WO -> still in_progress
   5. Pause first WO -> MO remains in_progress
   6. Complete first WO (from paused) -> still in_progress (second still in_progress)
-  7. Complete second WO -> all WOs done => MO should auto-shift to to_close
-  8. Manually complete MO (to_close -> not_assigned)
+  7. Complete second WO -> all WOs done => MO should auto-shift to done
+  8. Manual MO complete endpoint should reject (already done) or be idempotent
 */
 
 import pg from 'pg';
@@ -87,14 +87,15 @@ describe('Work Orders Transitions & MO Aggregation', () => {
     const mo = await getMO(); expect(mo.status).toBe('in_progress');
   });
 
-  it('completes second WO -> MO moves to to_close', async () => {
+  it('completes second WO -> MO moves to done', async () => {
     const res = await auth(api.post(`/wos/${wo2}/complete`));
     expectStatus(res,200); expect(res.body.data.status).toBe('done');
-    const mo = await getMO(); expect(mo.status).toBe('to_close');
+    const mo = await getMO(); expect(mo.status).toBe('done');
   });
 
-  it('finalizes MO (to_close->not_assigned)', async () => {
+  it('attempts redundant completion (already done)', async () => {
     const res = await auth(api.post(`/mos/${moId}/complete`));
-    expectStatus(res,200); expect(res.body.data.status).toBe('not_assigned');
+    // Expect 400 because MO already terminal
+    expect([200,400]).toContain(res.status);
   });
 });

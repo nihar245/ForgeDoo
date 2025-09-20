@@ -1,23 +1,37 @@
 import { ApiError, notFound } from '../core/apiError.js';
 import Joi from 'joi';
-import { createMO, getMO, listMOs, listLateMOs, setMOStatus, updateMO, deleteMO, getMOCost, attachBOM, checkAndReserveComponents } from '../models/manufacturingOrders.js';
+import { createMO, getMO, listMOs, listLateMOs, setMOStatus, updateMO, deleteMO, getMOCost, attachBOM, checkAndReserveComponents, computeComponentsAvailability } from '../models/manufacturingOrders.js';
 import { query } from '../config/db.js';
 import { sendMail } from '../utils/mailer.js';
 import { getBom } from '../models/boms.js';
 import { createWO } from '../models/workOrders.js';
+import { listWOs } from '../models/workOrders.js';
 
-export const createMoSchema = Joi.object({
-  product_id: Joi.number().integer().required(),
+// Old create schema replaced by two flows below
+
+export const createMoByProductSchema = Joi.object({
+  product_name: Joi.string().required(),
   quantity: Joi.number().positive().required(),
   start_date: Joi.date().optional(),
-  end_date: Joi.date().optional()
+  end_date: Joi.date().optional(),
+  assignee_id: Joi.number().integer().optional(),
+  bom_id: Joi.number().integer().optional() // user selects BOM after choosing product
+});
+
+export const createMoByBomSchema = Joi.object({
+  bom_id: Joi.number().integer().required(),
+  quantity: Joi.number().positive().required(),
+  start_date: Joi.date().optional(),
+  end_date: Joi.date().optional(),
+  assignee_id: Joi.number().integer().optional()
 });
 
 export const updateMoSchema = Joi.object({
   quantity: Joi.number().positive().optional(),
   start_date: Joi.date().optional(),
   end_date: Joi.date().optional(),
-  status: Joi.string().valid('draft','confirmed','in_progress','to_close','not_assigned').optional()
+  status: Joi.string().valid('draft','confirmed','in_progress','done','cancelled').optional(),
+  assignee_id: Joi.number().integer().optional()
 });
 
 export async function list(req,res,next){
@@ -31,7 +45,7 @@ export async function list(req,res,next){
 export async function listByStatus(req,res,next){
   try {
     const status = req.params.status;
-    const allowed = ['draft','confirmed','in_progress','to_close','not_assigned'];
+    const allowed = ['draft','confirmed','in_progress','done'];
     if(!allowed.includes(status)) return next(new ApiError(400,'Invalid status value'));
     const data = await listMOs({ status });
     res.json({ data });
@@ -43,9 +57,9 @@ export async function listByUserAndStatus(req,res,next){
   try {
     const userId = parseInt(req.params.id,10);
     if(Number.isNaN(userId)) return next(new ApiError(400,'Invalid user id'));
-    const status = req.params.status;
-    const allowed = ['draft','confirmed','in_progress','to_close','not_assigned'];
-    if(!allowed.includes(status)) return next(new ApiError(400,'Invalid status value'));
+  const status = req.params.status;
+  const allowed = ['draft','confirmed','in_progress','done'];
+  if(!allowed.includes(status)) return next(new ApiError(400,'Invalid status value'));
     const data = await listMOs({ status, created_by: userId });
     res.json({ data });
   } catch(e){ next(e); }
@@ -69,17 +83,43 @@ export async function listLateByUser(req,res,next){
   } catch(e){ next(e); }
 }
 
-export async function create(req,res,next){
-  try{
-    const mo = await createMO(req.body);
+// Flow 1: Create by product name (product resolved, optional bom chosen)
+export async function createByProduct(req,res,next){
+  try {
+    const { product_name, quantity, start_date, end_date, assignee_id, bom_id } = req.body;
+    const prodRes = await query('SELECT id FROM products WHERE name=$1 LIMIT 1',[product_name]);
+    if(!prodRes.rowCount) return next(new ApiError(400,'Product not found'));
+    // Validate BOM belongs to product if provided
+    if(bom_id){
+      const bomRes = await query('SELECT id FROM bom WHERE id=$1 AND product_id=$2',[bom_id, prodRes.rows[0].id]);
+      if(!bomRes.rowCount) return next(new ApiError(400,'BOM does not belong to product'));
+    }
+    const mo = await createMO({ product_id: prodRes.rows[0].id, quantity, start_date, end_date, assignee_id, bom_id });
     res.status(201).json({ data: mo });
-  }catch(e){ next(e); }
+  } catch(e){ next(e); }
+}
+
+// Flow 2: Create by BOM (auto-populate product from BOM)
+export async function createByBom(req,res,next){
+  try {
+    const { bom_id, quantity, start_date, end_date, assignee_id } = req.body;
+    const bomRes = await query('SELECT b.id,b.product_id FROM bom b WHERE b.id=$1',[bom_id]);
+    if(!bomRes.rowCount) return next(new ApiError(400,'BOM not found'));
+    const mo = await createMO({ product_id: bomRes.rows[0].product_id, quantity, start_date, end_date, assignee_id, bom_id });
+    // Auto-create work orders based on BOM operations (pending status)
+    const opsRes = await query('SELECT operation_name FROM bom_operations WHERE bom_id=$1 ORDER BY id',[bom_id]);
+    for(const op of opsRes.rows){
+      await createWO({ mo_id: mo.id, operation_name: op.operation_name, status: 'pending' });
+    }
+    const refreshed = await getMO(mo.id);
+    res.status(201).json({ data: refreshed });
+  } catch(e){ next(e); }
 }
 
 export async function getOne(req,res,next){
   try{
     const mo = await getMO(req.params.id);
-  if(!mo) throw notFound('Manufacturing order not found');
+    if(!mo) throw notFound('Manufacturing order not found');
     res.json({ data: mo });
   }catch(e){ next(e); }
 }
@@ -87,7 +127,7 @@ export async function getOne(req,res,next){
 export async function updateOne(req,res,next){
   try{
     const mo = await updateMO(req.params.id, req.body);
-  if(!mo) throw notFound('Manufacturing order not found');
+    if(!mo) throw notFound('Manufacturing order not found');
     res.json({ data: mo });
   }catch(e){ next(e); }
 }
@@ -96,18 +136,17 @@ export async function confirm(req,res,next){
   try {
     const id = req.params.id;
     const mo = await getMO(id);
-  if(!mo) throw notFound('Manufacturing order not found');
-  // NOTE: ApiError signature is (status, message). Previous order was reversed causing wrong status/message.
+    if(!mo) throw notFound('Manufacturing order not found');
+  if(mo.status === 'cancelled') throw new ApiError(400,'Cannot confirm a cancelled MO');
   if(mo.status !== 'draft') throw new ApiError(400, 'Only draft MO can be confirmed');
-    const updated = await setMOStatus(id,'confirmed');
-    // After confirming, attempt to reserve components
+    // Use updateMO path to stay consistent with other patch logic
+    await updateMO(id, { status: 'confirmed' });
     try {
       await checkAndReserveComponents(id);
     } catch(reserveErr){
-      // Log only; do not fail confirmation if reservation logic errors
       console.error('Component reservation failed', reserveErr.message);
     }
-    const refreshed = await getMO(id); // include component_status
+    const refreshed = await getMO(id);
     res.json({ data: refreshed });
   } catch(e){ next(e); }
 }
@@ -122,36 +161,27 @@ export async function start(req,res,next){
   }catch(e){ next(e); }
 }
 
-export async function requestClose(req,res,next){
-  try {
-    const id = req.params.id; const mo = await getMO(id);
-  if(!mo) throw notFound('Manufacturing order not found');
-  if(mo.status !== 'in_progress') throw new ApiError(400, 'Only in_progress MO can move to to_close');
-    const updated = await setMOStatus(id,'to_close');
-    res.json({ data: updated });
-  }catch(e){ next(e); }
-}
+// requestClose removed: direct completion from in_progress to done
 
 export async function complete(req,res,next){
   try {
     const id = req.params.id; const mo = await getMO(id);
-  if(!mo) throw notFound('Manufacturing order not found');
-  if(mo.status !== 'to_close') throw new ApiError(400, 'Only to_close MO can be marked not_assigned');
-    const updated = await setMOStatus(id,'not_assigned');
-    // Email notify creator if enabled
+    if(!mo) throw notFound('Manufacturing order not found');
+    if(mo.status !== 'in_progress') throw new ApiError(400, 'Only in_progress MO can be completed');
+    const updated = await setMOStatus(id,'done');
     const creatorRes = await query('SELECT u.email, u.name FROM users u JOIN manufacturing_orders m ON m.created_by=u.id WHERE m.id=$1',[id]);
     if(creatorRes.rowCount && updated){
       await sendMail({
         to: creatorRes.rows[0].email,
         subject: `MO ${updated.reference} Completed`,
-        text: `Manufacturing order ${updated.reference} has been marked not_assigned.`
+        text: `Manufacturing order ${updated.reference} has been marked done.`
       }).catch(()=>{});
     }
     res.json({ data: updated });
   }catch(e){ next(e); }
 }
 
-// cancel removed in new lifecycle (draft->confirmed->in_progress->to_close->not_assigned)
+// Lifecycle simplified: draft -> confirmed -> in_progress -> done (or cancelled)
 
 export async function remove(req,res,next){
   try{
@@ -175,5 +205,26 @@ export async function cost(req,res,next){
     const result = await getMOCost(req.params.id);
   if(!result) throw notFound('Manufacturing order not found');
     res.json({ data: result });
+  } catch(e){ next(e); }
+}
+
+// Components availability endpoint
+export async function getComponentsAvailability(req,res,next){
+  try {
+    const moId = req.params.id;
+    const data = await computeComponentsAvailability(moId);
+    if(!data) throw notFound('Manufacturing order not found');
+    res.json({ data });
+  } catch(e){ next(e); }
+}
+
+// Work orders for MO
+export async function listMoWorkOrders(req,res,next){
+  try {
+    const moId = parseInt(req.params.id,10);
+    if(Number.isNaN(moId)) return next(new ApiError(400,'Invalid MO id'));
+    // reuse listWOs with mo filter
+    const data = await listWOs({ mo_id: moId });
+    res.json({ data });
   } catch(e){ next(e); }
 }

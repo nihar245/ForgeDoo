@@ -7,6 +7,17 @@ export async function createWorkCenter({name,hourly_cost,capacity,location}){ co
 export async function updateWorkCenter(id,{name,hourly_cost,capacity,location}){ const r = await query('UPDATE work_centers SET name=$2, capacity_per_hour=$3, cost_per_hour=$4, location=$5 WHERE id=$1 RETURNING *',[id,name,capacity,hourly_cost,location]); return r.rows[0]; }
 export async function deleteWorkCenter(id){ await query('DELETE FROM work_centers WHERE id=$1',[id]); }
 
+// Upsert by name: if a work center with the given name exists, update cost/capacity/location; else insert
+export async function upsertWorkCenter({ name, hourly_cost, capacity, location }){
+	const existing = await query('SELECT id FROM work_centers WHERE name=$1 LIMIT 1',[name]);
+	if(existing.rowCount){
+		const r = await query('UPDATE work_centers SET capacity_per_hour=$2, cost_per_hour=$3, location=$4 WHERE id=$1 RETURNING *',[existing.rows[0].id, capacity, hourly_cost, location]);
+		return r.rows[0];
+	}
+	const r = await query('INSERT INTO work_centers(name, capacity_per_hour, cost_per_hour, location) VALUES($1,$2,$3,$4) RETURNING *',[name, capacity, hourly_cost, location]);
+	return r.rows[0];
+}
+
 // Utilization: compute total active minutes (from started_at to ended_at/now) for WOs mapped via BOM operations to work center.
 export async function getWorkCenterUtilization({ start, end }){
 	// start/end are dates; we consider WO started_at within window or overlapping

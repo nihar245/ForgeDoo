@@ -1,11 +1,12 @@
 -- ============================================================
--- Unified Init Schema (Consolidated from former 001-014)
+-- Unified Init Schema (Consolidated from 001-014)
 -- Date: 2025-09-20
--- This single migration is intended for a FRESH database reset.
--- Remove other incremental migrations when using this.
+-- This file represents the FINAL schema after all prior incremental migrations.
+-- If adopting a clean-slate migration strategy, remove old migration files
+-- and keep ONLY this as 001_init.sql.
 -- ============================================================
 
--- Drop existing objects (order matters due to FKs)
+-- Drop in dependency-safe order (if existing)
 DROP TABLE IF EXISTS stock_ledger CASCADE;
 DROP TABLE IF EXISTS inventory CASCADE;
 DROP TABLE IF EXISTS work_orders CASCADE;
@@ -18,7 +19,9 @@ DROP TABLE IF EXISTS password_resets CASCADE;
 DROP TABLE IF EXISTS products CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
--- USERS (final roles + hashed password field)
+-- =============================
+-- USERS
+-- =============================
 CREATE TABLE users(
   id SERIAL PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
@@ -30,9 +33,10 @@ CREATE TABLE users(
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- (No user seed rows; populate manually)
 
--- PASSWORD RESETS
+-- =============================
+-- PASSWORD RESETS (OTP)
+-- =============================
 CREATE TABLE password_resets(
   id SERIAL PRIMARY KEY,
   email TEXT NOT NULL,
@@ -43,7 +47,9 @@ CREATE TABLE password_resets(
 );
 CREATE INDEX idx_password_resets_email ON password_resets(email);
 
--- PRODUCTS (with unit_cost)
+-- =============================
+-- PRODUCTS
+-- =============================
 CREATE TABLE products(
   id SERIAL PRIMARY KEY,
   sku VARCHAR(30) UNIQUE NOT NULL,
@@ -54,9 +60,10 @@ CREATE TABLE products(
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- (No product seed rows; populate manually)
 
--- BOM (with output_quantity)
+-- =============================
+-- BILL OF MATERIALS (BOM)
+-- =============================
 CREATE TABLE bom(
   id SERIAL PRIMARY KEY,
   product_id INT REFERENCES products(id) ON DELETE CASCADE,
@@ -65,8 +72,6 @@ CREATE TABLE bom(
   created_by INT REFERENCES users(id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
--- (No BOM seed rows; populate manually)
 
 CREATE TABLE bom_components(
   id SERIAL PRIMARY KEY,
@@ -83,11 +88,10 @@ CREATE TABLE bom_operations(
   duration_mins INT
 );
 
--- (No BOM component seed rows)
-
--- (No BOM operation seed rows)
-
+--
+-- =============================
 -- WORK CENTERS
+-- =============================
 CREATE TABLE work_centers(
   id SERIAL PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
@@ -96,9 +100,12 @@ CREATE TABLE work_centers(
   location VARCHAR(100)
 );
 
--- (No work center seed rows)
 
--- MANUFACTURING ORDERS (simplified lifecycle + component_status + assignee + bom link)
+-- =============================
+-- MANUFACTURING ORDERS (final simplified lifecycle)
+-- statuses: draft, confirmed, in_progress, done, cancelled
+-- component_status: available | not_available | NULL
+-- =============================
 CREATE TABLE manufacturing_orders(
   id SERIAL PRIMARY KEY,
   product_id INT REFERENCES products(id),
@@ -112,7 +119,9 @@ CREATE TABLE manufacturing_orders(
   bom_id INT REFERENCES bom(id)
 );
 
--- WORK ORDERS (final statuses + real_duration_mins)
+-- =============================
+-- WORK ORDERS (final statuses including cancelled + real_duration_mins)
+-- =============================
 CREATE TABLE work_orders(
   id SERIAL PRIMARY KEY,
   mo_id INT REFERENCES manufacturing_orders(id) ON DELETE CASCADE,
@@ -124,7 +133,9 @@ CREATE TABLE work_orders(
   real_duration_mins NUMERIC
 );
 
--- STOCK LEDGER
+-- =============================
+-- STOCK LEDGER & INVENTORY
+-- =============================
 CREATE TABLE stock_ledger(
   id SERIAL PRIMARY KEY,
   product_id INT REFERENCES products(id),
@@ -134,7 +145,6 @@ CREATE TABLE stock_ledger(
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- INVENTORY
 CREATE TABLE inventory(
   id SERIAL PRIMARY KEY,
   product_id INT REFERENCES products(id) UNIQUE,
@@ -144,28 +154,32 @@ CREATE TABLE inventory(
   last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- (No inventory seed rows)
 
--- (No stock ledger seed rows)
-
--- Assignee trigger to enforce operator-only assignment
+-- =============================
+-- ASSIGNEE TRIGGER (enforce operator role)
+-- =============================
 CREATE OR REPLACE FUNCTION enforce_operator_assignee() RETURNS trigger AS $$
-DECLARE r_role text; BEGIN
+DECLARE r_role text;
+BEGIN
   IF NEW.assignee_id IS NULL THEN RETURN NEW; END IF;
   SELECT role INTO r_role FROM users WHERE id = NEW.assignee_id;
   IF r_role IS NULL THEN RAISE EXCEPTION 'Assignee user % not found', NEW.assignee_id; END IF;
   IF r_role <> 'operator' THEN RAISE EXCEPTION 'Assignee user % must have role operator (found %)', NEW.assignee_id, r_role; END IF;
-  RETURN NEW; END;$$ LANGUAGE plpgsql;
+  RETURN NEW;
+END;$$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_mo_assignee_operator ON manufacturing_orders;
 CREATE TRIGGER trg_mo_assignee_operator
   BEFORE INSERT OR UPDATE OF assignee_id ON manufacturing_orders
   FOR EACH ROW EXECUTE FUNCTION enforce_operator_assignee();
 
+-- =============================
 -- Helpful indexes
+-- =============================
 CREATE INDEX idx_mo_status ON manufacturing_orders(status);
 CREATE INDEX idx_mo_product ON manufacturing_orders(product_id);
 CREATE INDEX idx_wo_mo ON work_orders(mo_id);
 CREATE INDEX idx_ledger_product ON stock_ledger(product_id);
 CREATE INDEX idx_inv_product ON inventory(product_id);
 
--- END unified init
+-- End unified init

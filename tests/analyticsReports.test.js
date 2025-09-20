@@ -12,11 +12,11 @@ describe('Analytics & Reports', () => {
   it('dashboard returns MO + WO KPIs', async () => {
     const res = await auth(api.get('/analytics/dashboard'));
     expectStatus(res,200);
-  const keys = ['draft','confirmed','in_progress','to_close','not_assigned','wo_pending','wo_in_progress','wo_paused','wo_done'];
+  const keys = ['draft','confirmed','in_progress','done','cancelled','wo_pending','wo_in_progress','wo_paused','wo_done'];
     keys.forEach(k=>expect(res.body.data).toHaveProperty(k));
   });
 
-  it('analytics throughput returns not_assigned counts per period', async () => {
+  it('analytics throughput returns done counts per period', async () => {
     const res = await auth(api.get('/analytics/throughput').query(RANGE));
     expectStatus(res,200);
     expect(Array.isArray(res.body.data)).toBe(true);

@@ -44,7 +44,7 @@ export async function resumeWO(id){
 }
 
 export async function completeWO(id){
-  const woRes = await query("UPDATE work_orders SET status=CASE WHEN status IN ('in_progress','paused') THEN 'done' ELSE status END, ended_at=NOW() WHERE id=$1 RETURNING *",[id]);
+  const woRes = await query("UPDATE work_orders SET status=CASE WHEN status IN ('in_progress','paused') THEN 'done' ELSE status END, ended_at=NOW(), real_duration_mins = CASE WHEN started_at IS NOT NULL THEN EXTRACT(EPOCH FROM (NOW() - started_at))/60.0 ELSE real_duration_mins END WHERE id=$1 RETURNING *",[id]);
   if(!woRes.rowCount) return null; await updateMOAggregatedStatus(woRes.rows[0].mo_id); return { ...woRes.rows[0], reference: formatWO(woRes.rows[0].id) };
 }
 

@@ -8,8 +8,8 @@ export async function throughputReport(req,res,next){
     const { start, end } = await rangeSchema.validateAsync({ start: req.query.start, end: req.query.end });
     const r = await query(`
       SELECT end_date AS date, COUNT(*) AS orders_completed
-      FROM manufacturing_orders
-  WHERE status='not_assigned' AND end_date BETWEEN $1::date AND $2::date
+    FROM manufacturing_orders
+  WHERE status='done' AND end_date BETWEEN $1::date AND $2::date
       GROUP BY end_date
       ORDER BY end_date`,[start,end]);
     res.json({ data: r.rows });

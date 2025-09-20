@@ -7,7 +7,7 @@ function computeLate(record){
   if(!record.end_date) return false;
   const end = new Date(record.end_date);
   const today = new Date();
-  if(['not_assigned','to_close'].includes(record.status)) return false;
+  if(['done','cancelled'].includes(record.status)) return false;
   return end < new Date(today.toISOString().slice(0,10));
 }
 
@@ -18,7 +18,7 @@ export async function listMOs({ status, product, created_by }){
   if(created_by){ clauses.push(`created_by=$${i++}`); params.push(created_by); }
   const where = clauses.length? 'WHERE '+clauses.join(' AND '):'';
   const res = await query(`SELECT * FROM manufacturing_orders ${where} ORDER BY id DESC`, params);
-  return res.rows.map(r=>({ ...r, reference: formatMo(r.id), is_late: computeLate(r) }));
+  return res.rows.map(r=>({ ...r, reference: formatMo(r.id), is_late: computeLate(r), is_unassigned: !r.assignee_id }));
 }
 
 // List late manufacturing orders. Late = end_date < today AND status not terminal or in to_close.
@@ -38,18 +38,18 @@ export async function getMO(id){
   const res = await query('SELECT * FROM manufacturing_orders WHERE id=$1',[id]);
   if(!res.rowCount) return null;
   const r = res.rows[0];
-  return { ...r, reference: formatMo(r.id), is_late: computeLate(r) };
+  return { ...r, reference: formatMo(r.id), is_late: computeLate(r), is_unassigned: !r.assignee_id };
 }
 
-export async function createMO({ product_id, quantity, start_date, end_date, created_by }){
-  const res = await query('INSERT INTO manufacturing_orders(product_id, quantity, created_by, status, start_date, end_date) VALUES($1,$2,$3,$4,$5,$6) RETURNING *',[product_id, quantity, created_by||1, 'draft', start_date||null, end_date||null]);
+export async function createMO({ product_id, quantity, start_date, end_date, created_by, assignee_id, bom_id }){
+  const res = await query('INSERT INTO manufacturing_orders(product_id, quantity, created_by, status, start_date, end_date, assignee_id, bom_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',[product_id, quantity, created_by||1, 'draft', start_date||null, end_date||null, assignee_id||null, bom_id||null]);
   const r = res.rows[0];
-  return { ...r, reference: formatMo(r.id), is_late: computeLate(r) };
+  return { ...r, reference: formatMo(r.id), is_late: computeLate(r), is_unassigned: !r.assignee_id };
 }
 
-export async function updateMO(id, { quantity, start_date, end_date, status }){
-  const res = await query('UPDATE manufacturing_orders SET quantity=COALESCE($2,quantity), start_date=COALESCE($3,start_date), end_date=COALESCE($4,end_date), status=COALESCE($5,status) WHERE id=$1 RETURNING *',[id, quantity, start_date, end_date, status]);
-  if(!res.rowCount) return null; const r = res.rows[0]; return { ...r, reference: formatMo(r.id), is_late: computeLate(r) };
+export async function updateMO(id, { quantity, start_date, end_date, status, assignee_id }){
+  const res = await query('UPDATE manufacturing_orders SET quantity=COALESCE($2,quantity), start_date=COALESCE($3,start_date), end_date=COALESCE($4,end_date), status=COALESCE($5,status), assignee_id=COALESCE($6,assignee_id) WHERE id=$1 RETURNING *',[id, quantity, start_date, end_date, status, assignee_id]);
+  if(!res.rowCount) return null; const r = res.rows[0]; return { ...r, reference: formatMo(r.id), is_late: computeLate(r), is_unassigned: !r.assignee_id };
 }
 
 export async function attachBOM(id, bom_id){
@@ -63,7 +63,7 @@ export async function attachBOM(id, bom_id){
 
 export async function setMOStatus(id, status){
   const res = await query('UPDATE manufacturing_orders SET status=$2 WHERE id=$1 RETURNING *',[id,status]);
-  if(!res.rowCount) return null; const r = res.rows[0]; return { ...r, reference: formatMo(r.id), is_late: computeLate(r) };
+  if(!res.rowCount) return null; const r = res.rows[0]; return { ...r, reference: formatMo(r.id), is_late: computeLate(r), is_unassigned: !r.assignee_id };
 }
 
 // Component availability & reservation logic
@@ -128,6 +128,30 @@ export async function checkAndReserveComponents(mo_id){
   }
 }
 
+// Compute required components & availability for an MO without reserving
+export async function computeComponentsAvailability(mo_id){
+  const moRes = await query('SELECT id, product_id, quantity, bom_id FROM manufacturing_orders WHERE id=$1',[mo_id]);
+  if(!moRes.rowCount) return null;
+  const mo = moRes.rows[0];
+  const bom = await getEffectiveBOM(mo.product_id, mo.bom_id);
+  if(!bom || bom.components.length===0){
+    return { mo_id: mo.id, reference: formatMo(mo.id), components: [] };
+  }
+  const rows = [];
+  for(const c of bom.components){
+    const required = Number(c.quantity) * mo.quantity;
+    const inv = await query('SELECT quantity_available FROM inventory WHERE product_id=$1',[c.component_product_id]);
+    const available = inv.rowCount? Number(inv.rows[0].quantity_available):0;
+    rows.push({
+      component_product_id: c.component_product_id,
+      required,
+      available,
+      status: available >= required ? 'sufficient' : 'insufficient'
+    });
+  }
+  return { mo_id: mo.id, reference: formatMo(mo.id), components: rows };
+}
+
 export async function deleteMO(id){
   const res = await query("DELETE FROM manufacturing_orders WHERE id=$1 AND status IN ('draft') RETURNING id",[id]);
   return res.rowCount>0;
@@ -142,7 +166,8 @@ export async function updateMOAggregatedStatus(mo_id){
   if(wos.rowCount===0) return;
   const statuses = wos.rows.map(r=>r.status);
   let newStatus = current;
-  if(statuses.every(s=>s==='done')) newStatus = 'to_close'; // WO status 'done' unchanged; MO terminal now 'not_assigned'
+  if(statuses.some(s=>s==='cancelled')) newStatus = 'cancelled';
+  else if(statuses.every(s=>s==='done')) newStatus = 'done';
   else if(statuses.some(s=>s==='in_progress' || s==='paused')) newStatus = 'in_progress';
   else if(statuses.every(s=>s==='pending')) newStatus = 'confirmed';
   if(newStatus !== current){

@@ -16,6 +16,7 @@ import woRoutes from './routes/woRoutes.js';
 import ledgerRoutes from './routes/ledgerRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
+import selfRoutes from './routes/selfRoutes.js';
 import swaggerUi from 'swagger-ui-express';
 import fs from 'fs';
 import path from 'path';
@@ -40,6 +41,7 @@ app.use('/wos', woRoutes);
 app.use('/ledger', ledgerRoutes);
 app.use('/analytics', analyticsRoutes);
 app.use('/reports', reportRoutes);
+app.use('/me', selfRoutes);
 
 // Swagger docs
 try {

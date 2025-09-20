@@ -5,11 +5,11 @@ export async function dashboard(req,res,next){
   try {
     const kpiRes = await query(`
       SELECT 
-        COUNT(*) FILTER (WHERE status='draft') AS draft,
-        COUNT(*) FILTER (WHERE status='confirmed') AS confirmed,
-        COUNT(*) FILTER (WHERE status='in_progress') AS in_progress,
-        COUNT(*) FILTER (WHERE status='to_close') AS to_close,
-  COUNT(*) FILTER (WHERE status='not_assigned') AS not_assigned
+    COUNT(*) FILTER (WHERE status='draft') AS draft,
+    COUNT(*) FILTER (WHERE status='confirmed') AS confirmed,
+    COUNT(*) FILTER (WHERE status='in_progress') AS in_progress,
+    COUNT(*) FILTER (WHERE status='done') AS done,
+    COUNT(*) FILTER (WHERE status='cancelled') AS cancelled
       FROM manufacturing_orders`);
     const woRes = await query(`
       SELECT 
@@ -31,8 +31,8 @@ export async function throughput(req,res,next){
     const sql = `
       SELECT date_trunc('${dateTrunc}', end_date)::date AS period,
              COUNT(*) AS orders_completed
-      FROM manufacturing_orders
-  WHERE status='not_assigned' AND end_date BETWEEN $1::date AND $2::date
+    FROM manufacturing_orders
+  WHERE status='done' AND end_date BETWEEN $1::date AND $2::date
       GROUP BY 1
       ORDER BY 1`;
     const r = await query(sql,[start,end]);
@@ -46,8 +46,8 @@ export async function cycleTime(req,res,next){
     const r = await query(`
       SELECT product_id,
              AVG((end_date - start_date))::numeric AS avg_cycle_days
-      FROM manufacturing_orders
-  WHERE status='not_assigned' AND start_date IS NOT NULL AND end_date IS NOT NULL
+    FROM manufacturing_orders
+  WHERE status='done' AND start_date IS NOT NULL AND end_date IS NOT NULL
         AND start_date >= $1::date AND end_date <= $2::date
       GROUP BY product_id
       ORDER BY product_id`,[start,end]);
