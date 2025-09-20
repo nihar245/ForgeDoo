@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
@@ -24,6 +24,7 @@ const Layout = ({ children }) => {
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const dropdownRef = useRef(null)
   const [compactMode, setCompactMode] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('compactMode') || 'false')
@@ -31,6 +32,23 @@ const Layout = ({ children }) => {
       return false
     }
   })
+
+  // Click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setSettingsOpen(false)
+      }
+    }
+
+    if (settingsOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [settingsOpen])
 
   useEffect(() => {
     localStorage.setItem('compactMode', JSON.stringify(compactMode))
@@ -69,21 +87,21 @@ const Layout = ({ children }) => {
   ]
 
   return (
-  <div className="min-h-screen bg-white flex overflow-x-hidden max-w-[100vw] w-full">
+  <div className="min-h-screen bg-slate-50 flex overflow-x-hidden max-w-[100vw] w-full">
       {/* Sidebar */}
       <div className="hidden"></div>
 
       {/* Main Content */}
   <div className="flex-1 lg:pl-0">
         {/* Top Navigation */}
-        <header className="sticky top-0 z-40 glass border-b border-gray-200">
-          <div className="max-w-[100vw] mx-auto px-4 sm:px-6 lg:px-8 py-3">
+        <header className="sticky top-0 z-40 glass border-b border-slate-200 bg-white/95">
+          <div className="max-w-[100vw] mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="grid grid-cols-[auto_1fr_auto] items-center">
               {/* Left: Hamburger to open Master Menu */}
               <div className="justify-self-start">
                 <button
                   onClick={() => setSidebarOpen(v => !v)}
-                  className="bg-gray-50 p-2 rounded-lg hover:bg-gray-100 transition-all"
+                  className="bg-slate-50 p-2.5 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-all duration-200"
                   aria-label="Open menu"
                   title="Open menu"
                 >
@@ -91,13 +109,16 @@ const Layout = ({ children }) => {
                 </button>
               </div>
               {/* Center: Logo + Company Name */}
-              <div className="justify-self-center flex items-center gap-2">
+              <div className="justify-self-center flex items-center gap-3">
                 <Link to="/" className="inline-flex items-center">
-                  <img
-                    src={brandLogo}
-                    alt="Manufacturing ERP Logo"
-                    className="w-10 h-10 rounded-lg object-contain ring-1 ring-gray-200 shadow-sm"
-                  />
+                  <div className="relative">
+                    <img
+                      src={brandLogo}
+                      alt="ForgeDoo Logo"
+                      className="w-10 h-10 rounded-lg object-contain ring-2 ring-blue-200 shadow-sm"
+                    />
+                    <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg blur opacity-20 animate-pulse"></div>
+                  </div>
                 </Link>
                 <span className="text-lg font-bold text-slate-800">ForgeDoo</span>
               </div>
@@ -109,7 +130,7 @@ const Layout = ({ children }) => {
                 {isAuthenticated ? (
                   <>
                     {/* Avatar with initials and dropdown */}
-                    <div className="relative">
+                    <div className="relative" ref={dropdownRef}>
                       <button
                         onClick={() => setSettingsOpen(v => !v)}
                         className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center text-sm font-bold shadow-lg hover:shadow-xl transition-all duration-200"
@@ -155,7 +176,7 @@ const Layout = ({ children }) => {
                 ) : (
                   <Link
                     to="/login"
-                    className="px-3 py-2 rounded-md text-sm font-medium bg-gray-900 text-white hover:bg-black transition"
+                    className="btn-primary px-4 py-2 rounded-lg text-sm font-medium transition-all"
                   >
                     Login
                   </Link>
@@ -165,7 +186,7 @@ const Layout = ({ children }) => {
               <div className="md:hidden col-span-2 justify-self-end flex items-center gap-2">
                 <button
                   onClick={() => setSidebarOpen(v => !v)}
-                  className="bg-gray-50 p-2 rounded-lg hover:bg-gray-100 transition-all"
+                  className="bg-slate-50 p-2.5 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-all duration-200"
                   aria-label="Open menu"
                   title="Open menu"
                 >
@@ -190,7 +211,7 @@ const Layout = ({ children }) => {
                 ) : (
                   <Link
                     to="/login"
-                    className="px-3 py-1.5 rounded-md text-sm font-medium bg-gray-900 text-white hover:bg-black transition"
+                    className="btn-primary px-3 py-1.5 rounded-lg text-sm font-medium transition-all"
                   >
                     Login
                   </Link>
@@ -202,7 +223,7 @@ const Layout = ({ children }) => {
         </header>
 
         {/* Page Content */}
-        <main className="p-6 overflow-x-hidden">
+        <main className="p-6 overflow-x-hidden bg-slate-50">
           <div className="w-full max-w-[100vw] mx-auto overflow-x-hidden">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -237,7 +258,16 @@ const Layout = ({ children }) => {
             >
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                  <img src={brandLogo} alt="Logo" className="w-8 h-8 rounded-lg ring-1 ring-slate-200" />
+                  <div className="p-2 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg ring-2 ring-blue-200 shadow-sm">
+                    <img 
+                      src={brandLogo} 
+                      alt="ForgeDoo Logo" 
+                      className="w-6 h-6 object-contain filter drop-shadow-sm" 
+                      style={{
+                        filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.3))'
+                      }}
+                    />
+                  </div>
                   <span className="font-bold text-slate-800">ForgeDoo</span>
                 </div>
                 <button

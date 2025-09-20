@@ -21,6 +21,7 @@ import BOMDetail from './pages/BOM/BOMDetail'
 import Reports from './pages/Reports/Reports'
 import MyOrders from './pages/MyOrders/MyOrders'
 import WorkCenters from './pages/WorkCenters/WorkCenters'
+import Profile from './pages/Profile/Profile'
 
 // Layout
 import Layout from './components/layout/Layout'
@@ -132,6 +133,14 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <WorkCenters />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              <Route path="/profile" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Profile />
                   </Layout>
                 </ProtectedRoute>
               } />

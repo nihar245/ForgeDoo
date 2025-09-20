@@ -58,12 +58,16 @@ const Login = () => {
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center">
             <div style={{ width: 96, height: 84 }} className="flex items-center justify-center">
-              <img 
-                src={brandLogo} 
-                alt="Manufacturing ERP Logo" 
-                className="rounded-lg object-contain ring-1 ring-gray-200 shadow-sm hover:shadow transition"
-                style={{ width: '100%', height: '100%' }}
-              />
+              <div className="p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl ring-2 ring-blue-200 shadow-sm">
+                <img 
+                  src={brandLogo} 
+                  alt="ForgeDoo Logo" 
+                  className="w-16 h-16 object-contain filter drop-shadow-sm"
+                  style={{
+                    filter: 'drop-shadow(0 0 12px rgba(59, 130, 246, 0.4))'
+                  }}
+                />
+              </div>
             </div>
           </Link>
         </div>
@@ -81,14 +85,14 @@ const Login = () => {
                 Email Address
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
                   type="email"
                   id="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="input-enhanced w-full pl-10 pr-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                  className="w-full pl-10 pr-4 py-3 rounded-lg border-2 border-slate-200 focus:border-blue-500 focus:ring-0 bg-white text-slate-800 hover:border-blue-300 transition-colors"
                   placeholder="Enter your email"
                   required
                 />
@@ -100,21 +104,21 @@ const Login = () => {
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   id="password"
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="input-enhanced w-full pl-10 pr-12 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                  className="w-full pl-10 pr-12 py-3 rounded-lg border-2 border-slate-200 focus:border-blue-500 focus:ring-0 bg-white text-slate-800 hover:border-blue-300 transition-colors"
                   placeholder="Enter your password"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>

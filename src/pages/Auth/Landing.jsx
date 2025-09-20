@@ -115,12 +115,17 @@ const Landing = () => {
               className="flex items-center justify-center gap-4 mb-8"
             >
               <div className="relative">
-                <img 
-                  src={brandLogo} 
-                  alt="ForgeDoo Logo" 
-                  className="w-16 h-16 rounded-xl object-contain ring-2 ring-blue-200 shadow-lg"
-                />
-                <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl blur opacity-30 animate-pulse"></div>
+                <div className="p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl ring-2 ring-blue-200 shadow-lg">
+                  <img 
+                    src={brandLogo} 
+                    alt="ForgeDoo Logo" 
+                    className="w-12 h-12 object-contain filter drop-shadow-sm"
+                    style={{
+                      filter: 'drop-shadow(0 0 12px rgba(59, 130, 246, 0.5))'
+                    }}
+                  />
+                </div>
+                <div className="absolute -inset-2 bg-gradient-to-r from-blue-400 to-blue-600 rounded-xl blur-md opacity-40 animate-pulse"></div>
               </div>
               <div>
                 <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-slate-800 via-blue-700 to-slate-800 bg-clip-text text-transparent">
@@ -157,19 +162,13 @@ const Landing = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.6 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center"
+              className="flex justify-center"
             >
               <Link
                 to="/signup"
-                className="btn-primary px-8 py-4 rounded-xl text-lg font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
+                className="btn-primary px-10 py-4 rounded-xl text-lg font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
               >
-                Start Free Trial
-              </Link>
-              <Link
-                to="/login"
-                className="btn-secondary px-8 py-4 rounded-xl text-lg font-semibold transform hover:scale-105 transition-all duration-300"
-              >
-                View Demo
+                Get Started
               </Link>
             </motion.div>
           </div>

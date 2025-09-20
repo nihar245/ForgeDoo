@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Users, Clock, Play, Pause, CheckCircle } from 'lucide-react'
+import { Users, Clock, Play, Pause, CheckCircle, RotateCcw } from 'lucide-react'
 import StatusBadge from '../../components/StatusBadge'
 
 const WorkOrders = () => {
@@ -48,7 +48,7 @@ const WorkOrders = () => {
       ...o,
       status: 'In Progress',
       running: true,
-      startedAt: Date.now(),
+      startedAt: Date.now() - (o.elapsedSec || 0) * 1000,
       elapsedSec: o.elapsedSec || 0,
     } : o))
   }
@@ -56,6 +56,7 @@ const WorkOrders = () => {
   const handlePause = (id) => {
     setWorkOrders(prev => prev.map(o => o.id === id ? {
       ...o,
+      status: 'Paused',
       running: false,
       elapsedSec: o.startedAt ? Math.floor((Date.now() - o.startedAt) / 1000) : (o.elapsedSec || 0),
       startedAt: undefined,
@@ -68,6 +69,16 @@ const WorkOrders = () => {
       status: 'Completed',
       running: false,
       elapsedSec: o.startedAt ? Math.floor((Date.now() - o.startedAt) / 1000) : (o.elapsedSec || 0),
+      startedAt: undefined,
+    } : o))
+  }
+
+  const handleReset = (id) => {
+    setWorkOrders(prev => prev.map(o => o.id === id ? {
+      ...o,
+      status: 'Pending',
+      running: false,
+      elapsedSec: 0,
       startedAt: undefined,
     } : o))
   }
@@ -162,15 +173,50 @@ const WorkOrders = () => {
                   <td className="py-4 px-6 text-gray-700">{fmt(order.elapsedSec) || order.duration}</td>
                   <td className="py-4 px-6">
                     <div className="flex items-center space-x-2">
-                      <button onClick={() => handlePlay(order.id)} className="neomorphism p-2 rounded-lg hover:text-green-600 transition-all" aria-label={`Start ${order.id}`}>
-                        <Play className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => handlePause(order.id)} className="neomorphism p-2 rounded-lg hover:text-black transition-all" aria-label={`Pause ${order.id}`}>
-                        <Pause className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => handleComplete(order.id)} className="neomorphism p-2 rounded-lg hover:text-black transition-all" aria-label={`Complete ${order.id}`}>
-                        <CheckCircle className="w-4 h-4" />
-                      </button>
+                      {/* Show Play button only when not running */}
+                      {!order.running && order.status !== 'Completed' && (
+                        <button 
+                          onClick={() => handlePlay(order.id)} 
+                          className="neomorphism p-2 rounded-lg hover:text-green-600 transition-all" 
+                          aria-label={`Start ${order.id}`}
+                          title="Start/Resume"
+                        >
+                          <Play className="w-4 h-4" />
+                        </button>
+                      )}
+                      {/* Show Pause button only when running */}
+                      {order.running && (
+                        <button 
+                          onClick={() => handlePause(order.id)} 
+                          className="neomorphism p-2 rounded-lg hover:text-yellow-600 transition-all" 
+                          aria-label={`Pause ${order.id}`}
+                          title="Pause"
+                        >
+                          <Pause className="w-4 h-4" />
+                        </button>
+                      )}
+                      {/* Show Complete button when in progress or paused */}
+                      {(order.status === 'In Progress' || order.status === 'Paused') && (
+                        <button 
+                          onClick={() => handleComplete(order.id)} 
+                          className="neomorphism p-2 rounded-lg hover:text-blue-600 transition-all" 
+                          aria-label={`Complete ${order.id}`}
+                          title="Mark Complete"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                        </button>
+                      )}
+                      {/* Show Reset button when paused or completed */}
+                      {(order.status === 'Paused' || order.status === 'Completed') && (
+                        <button 
+                          onClick={() => handleReset(order.id)} 
+                          className="neomorphism p-2 rounded-lg hover:text-red-600 transition-all" 
+                          aria-label={`Reset ${order.id}`}
+                          title="Reset Timer"
+                        >
+                          <RotateCcw className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </motion.tr>
