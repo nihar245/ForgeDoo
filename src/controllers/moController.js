@@ -10,12 +10,12 @@ import { listWOs } from '../models/workOrders.js';
 // Old create schema replaced by two flows below
 
 export const createMoByProductSchema = Joi.object({
-  product_name: Joi.string().required(),
+  product_id: Joi.number().integer().required(), // ✅ Changed to product_id
   quantity: Joi.number().positive().required(),
   start_date: Joi.date().optional(),
   end_date: Joi.date().optional(),
   assignee_id: Joi.number().integer().optional(),
-  bom_id: Joi.number().integer().optional() // user selects BOM after choosing product
+  bom_id: Joi.number().integer().optional()
 });
 
 export const createMoByBomSchema = Joi.object({
@@ -86,19 +86,22 @@ export async function listLateByUser(req,res,next){
 // Flow 1: Create by product name (product resolved, optional bom chosen)
 export async function createByProduct(req,res,next){
   try {
-    const { product_name, quantity, start_date, end_date, assignee_id, bom_id } = req.body;
-    const prodRes = await query('SELECT id FROM products WHERE name=$1 LIMIT 1',[product_name]);
+    const { product_id, quantity, start_date, end_date, assignee_id, bom_id } = req.body; // ✅ Changed to product_id
+    
+    // Validate product exists
+    const prodRes = await query('SELECT id FROM products WHERE id=$1 LIMIT 1',[product_id]); // ✅ Changed query
     if(!prodRes.rowCount) return next(new ApiError(400,'Product not found'));
+    
     // Validate BOM belongs to product if provided
     if(bom_id){
-      const bomRes = await query('SELECT id FROM bom WHERE id=$1 AND product_id=$2',[bom_id, prodRes.rows[0].id]);
+      const bomRes = await query('SELECT id FROM bom WHERE id=$1 AND product_id=$2',[bom_id, product_id]); // ✅ Use product_id directly
       if(!bomRes.rowCount) return next(new ApiError(400,'BOM does not belong to product'));
     }
-    const mo = await createMO({ product_id: prodRes.rows[0].id, quantity, start_date, end_date, assignee_id, bom_id });
+    
+    const mo = await createMO({ product_id, quantity, start_date, end_date, assignee_id, bom_id });
     res.status(201).json({ data: mo });
   } catch(e){ next(e); }
 }
-
 // Flow 2: Create by BOM (auto-populate product from BOM)
 export async function createByBom(req,res,next){
   try {
@@ -107,9 +110,17 @@ export async function createByBom(req,res,next){
     if(!bomRes.rowCount) return next(new ApiError(400,'BOM not found'));
     const mo = await createMO({ product_id: bomRes.rows[0].product_id, quantity, start_date, end_date, assignee_id, bom_id });
     // Auto-create work orders based on BOM operations (pending status)
-    const opsRes = await query('SELECT operation_name FROM bom_operations WHERE bom_id=$1 ORDER BY id',[bom_id]);
+    const opsRes = await query('SELECT id, operation_name, sequence, workcenter_id, duration_mins FROM bom_operations WHERE bom_id=$1 ORDER BY sequence, id',[bom_id]);
     for(const op of opsRes.rows){
-      await createWO({ mo_id: mo.id, operation_name: op.operation_name, status: 'pending' });
+      await createWO({ 
+        mo_id: mo.id, 
+        bom_operation_id: op.id,
+        operation_name: op.operation_name, 
+        sequence: op.sequence,
+        work_center_id: op.workcenter_id,
+        expected_duration_mins: op.duration_mins,
+        status: 'pending' 
+      });
     }
     const refreshed = await getMO(mo.id);
     res.status(201).json({ data: refreshed });

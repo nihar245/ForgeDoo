@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authorize } from '../middleware/authorize.js';
 import { validate } from '../middleware/validate.js';
 import { requireAuth } from '../middleware/auth.js';
-import { createByProduct, createByBom, list, listByStatus, listByUserAndStatus, listLate, listLateByUser, getOne, updateOne, confirm, start, requestClose, complete, createMoByProductSchema, createMoByBomSchema, updateMoSchema, cost, remove, attachBom, getComponentsAvailability, listMoWorkOrders } from '../controllers/moController.js';
+import { createByProduct, createByBom, list, listByStatus, listByUserAndStatus, listLate, listLateByUser, getOne, updateOne, confirm, start, complete, createMoByProductSchema, createMoByBomSchema, updateMoSchema, cost, remove, attachBom, getComponentsAvailability, listMoWorkOrders } from '../controllers/moController.js';
 
 const router = Router();
 
@@ -29,10 +29,10 @@ router.patch('/:id', authorize('admin','manager'), validate(updateMoSchema), upd
 router.post('/:id/confirm', authorize('admin','manager'), confirm);
 
 router.post('/:id/start', authorize('admin','manager'), start);
-router.post('/:id/request-close', authorize('admin','manager'), requestClose);
+// router.post('/:id/request-close', authorize('admin','manager'), requestClose);
 router.post('/:id/complete', authorize('admin','manager'), complete);
 router.get('/:id/cost', authorize('admin','manager','inventory'), cost);
 router.delete('/:id', authorize('admin','manager'), remove);
 router.post('/:id/attach-bom', authorize('admin','manager'), attachBom);
-
+    
 export default router;

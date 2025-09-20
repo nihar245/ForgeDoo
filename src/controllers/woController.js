@@ -8,6 +8,16 @@ export const listWoSchema = Joi.object({
   work_center_id: Joi.number().integer().optional()
 });
 
+export const createWoSchema = Joi.object({
+  mo_id: Joi.number().integer().required(),
+  bom_operation_id: Joi.number().integer().optional(),
+  operation_name: Joi.string().required(),
+  sequence: Joi.number().integer().min(1).optional(),
+  work_center_id: Joi.number().integer().optional(),
+  assigned_to: Joi.number().integer().optional(),
+  expected_duration_mins: Joi.number().integer().positive().optional()
+});
+
 export async function list(req,res,next){
   try{
     const data = await listWOs({ mo_id: req.query.mo_id, status: req.query.status, work_center_id: req.query.work_center_id });
@@ -28,7 +38,9 @@ export const updateWoSchema = Joi.object({
   planned_end: Joi.date().optional(),
   actual_start: Joi.date().optional(),
   actual_end: Joi.date().optional(),
-  status: Joi.string().valid('Pending','InProgress','Done','Cancelled').optional()
+  status: Joi.string().valid('pending','in_progress','paused','done','cancelled').optional(),
+  real_duration_mins: Joi.number().positive().optional(),
+  assigned_to: Joi.number().integer().optional()
 });
 
 export async function updateOne(req,res,next){

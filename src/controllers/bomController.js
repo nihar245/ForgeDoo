@@ -2,8 +2,8 @@ import Joi from 'joi';
 import { listBoms, getBom, createBom, updateBom, deleteBom, upsertBom } from '../models/boms.js';
 import { notFound } from '../core/apiError.js';
 
-const componentSchema = Joi.object({ component_product_id: Joi.number().required(), qty_per_unit: Joi.number().positive().required(), uom: Joi.string().default('pcs') });
-const operationSchema = Joi.object({ operation_name: Joi.string().required(), work_center_id: Joi.number().required(), duration_mins: Joi.number().integer().positive().required(), sequence: Joi.number().integer().min(1).optional() });
+const componentSchema = Joi.object({ product_id: Joi.number().required(), qty_per_unit: Joi.number().positive().required(), uom: Joi.string().default('pcs') });
+const operationSchema = Joi.object({ operation_name: Joi.string().required(), work_center_id: Joi.number().required(), duration_mins: Joi.number().integer().positive().required(), sequence: Joi.number().integer().min(1).required() });
 const createSchema = Joi.object({ product_id: Joi.number().required(), name: Joi.string().required(), output_quantity: Joi.number().positive().default(1), components: Joi.array().items(componentSchema).default([]), operations: Joi.array().items(operationSchema).default([]) });
 const updateSchema = Joi.object({ name: Joi.string().optional(), output_quantity: Joi.number().positive().optional(), components: Joi.array().items(componentSchema).optional(), operations: Joi.array().items(operationSchema).optional() });
 const upsertSchema = Joi.object({ product_id: Joi.number().required(), reference: Joi.string().required(), output_quantity: Joi.number().positive().default(1), components: Joi.array().items(componentSchema).default([]), operations: Joi.array().items(operationSchema).default([]) });

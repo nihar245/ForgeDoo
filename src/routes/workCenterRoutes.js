@@ -6,9 +6,9 @@ import { list, get, create, update, remove, utilization, upsert, listCosts } fro
 const router = express.Router();
 router.use(requireAuth);
 router.get('/', list);
-router.get('/_utilization', authorize('admin','manager','viewer'), utilization);
-router.get('/costs', listCosts);
-router.post('/upsert', authorize('admin','manager'), upsert);
+// router.get('/_utilization', authorize('admin','manager','viewer'), utilization);
+// router.get('/costs', listCosts);
+// router.post('/upsert', authorize('admin','manager'), upsert);
 router.get('/:id', get);
 router.post('/', authorize('admin','manager'), create);
 router.patch('/:id', authorize('admin','manager'), update);

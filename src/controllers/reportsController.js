@@ -31,13 +31,3 @@ export async function userWorkSummary(req,res,next){
   } catch(e){ next(e); }
 }
 
-export async function inventorySummary(req,res,next){
-  try {
-    const r = await query(`
-      SELECT p.id as product_id, p.sku, p.name, p.type, i.quantity_available, i.reorder_level, i.location
-      FROM products p
-      LEFT JOIN inventory i ON i.product_id = p.id
-      ORDER BY p.id`);
-    res.json({ data: r.rows });
-  } catch(e){ next(e); }
-}

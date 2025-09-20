@@ -9,7 +9,7 @@ const router = Router();
 router.use(requireAuth);
 
 // Use canonical roles (legacy roles normalized in users model)
-router.get('/', authorize('admin','manager','inventory','operator'), stockSummary);
-router.post('/add', authorize('admin','manager','inventory'), addStock);
+router.get('/', authorize('admin','manager','operator','inventory'), stockSummary);
+router.post('/add', authorize('admin','manager','operator','inventory'), addStock);
 
 export default router;

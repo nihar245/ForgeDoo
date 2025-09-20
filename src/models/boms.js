@@ -9,7 +9,7 @@ export async function getBom(id){
   const bomR = await query('SELECT *, output_quantity FROM bom WHERE id=$1',[id]);
   if(!bomR.rowCount) return null;
   const components = await query('SELECT * FROM bom_components WHERE bom_id=$1 ORDER BY id',[id]);
-  const ops = await query('SELECT * FROM bom_operations WHERE bom_id=$1 ORDER BY id',[id]);
+  const ops = await query('SELECT * FROM bom_operations WHERE bom_id=$1 ORDER BY sequence, id',[id]);
   return { ...bomR.rows[0], components: components.rows, operations: ops.rows };
 }
 
@@ -20,11 +20,11 @@ export async function createBom({product_id,version,name,components,operations,o
   const bomId = r.rows[0].id;
   for(const c of components||[]){
     const qty = c.quantity ?? c.qty_per_unit; // support either field
-    await query('INSERT INTO bom_components(bom_id,component_product_id,quantity) VALUES($1,$2,$3)',[bomId,c.component_product_id,qty]);
+    await query('INSERT INTO bom_components(bom_id,product_id,quantity) VALUES($1,$2,$3)',[bomId,c.product_id,qty]);
   }
   for(const o of operations||[]){
     const wcId = o.workcenter_id ?? o.work_center_id;
-    await query('INSERT INTO bom_operations(bom_id,operation_name,workcenter_id,duration_mins) VALUES($1,$2,$3,$4)',[bomId,o.operation_name,wcId,o.duration_mins]);
+    await query('INSERT INTO bom_operations(bom_id,operation_name,sequence,workcenter_id,duration_mins) VALUES($1,$2,$3,$4,$5)',[bomId,o.operation_name,o.sequence,wcId,o.duration_mins]);
   }
   return getBom(bomId);
 }
@@ -37,14 +37,14 @@ export async function updateBom(id,{version,name,components,operations,output_qu
     await query('DELETE FROM bom_components WHERE bom_id=$1',[id]);
     for(const c of components){
       const qty = c.quantity ?? c.qty_per_unit;
-      await query('INSERT INTO bom_components(bom_id,component_product_id,quantity) VALUES($1,$2,$3)',[id,c.component_product_id,qty]);
+      await query('INSERT INTO bom_components(bom_id,product_id,quantity) VALUES($1,$2,$3)',[id,c.product_id,qty]);
     }
   }
   if(operations){
     await query('DELETE FROM bom_operations WHERE bom_id=$1',[id]);
     for(const o of operations){
       const wcId = o.workcenter_id ?? o.work_center_id;
-      await query('INSERT INTO bom_operations(bom_id,operation_name,workcenter_id,duration_mins) VALUES($1,$2,$3,$4)',[id,o.operation_name,wcId,o.duration_mins]);
+      await query('INSERT INTO bom_operations(bom_id,operation_name,sequence,workcenter_id,duration_mins) VALUES($1,$2,$3,$4,$5)',[id,o.operation_name,o.sequence,wcId,o.duration_mins]);
     }
   }
   return getBom(id);

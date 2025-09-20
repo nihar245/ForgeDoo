@@ -5,11 +5,13 @@ import { config } from '../core/config.js';
 import { badRequest, notFound } from '../core/apiError.js';
 
 const productSchema = Joi.object({
-  sku: Joi.string().allow(null,''),
   name: Joi.string().min(2).required(),
   // Accept simplified types and legacy values
   type: Joi.string().valid('raw','finished','raw_material','semi_finished').required(),
-  uom: Joi.string().default('pcs')
+  uom: Joi.string().default('pcs'),
+  unit_cost: Joi.number().precision(4).min(0).default(0),
+  category: Joi.string().valid('raw_material','semi_finished','finished').optional(),
+  is_component: Joi.boolean().optional()
 }).custom((val, helpers)=>{
   // Map simplified to legacy
   const map = { raw: 'raw_material' };

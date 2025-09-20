@@ -11,10 +11,10 @@
         "type": "object",
         "properties": {
           "id": { "type": "integer" },
-          "sku": { "type": "string" },
           "name": { "type": "string" },
           "type": { "type": "string" },
           "uom": { "type": "string" }
+          ,"unit_cost": { "type": "number", "format": "decimal" }
         }
       },
       "ManufacturingOrder": {

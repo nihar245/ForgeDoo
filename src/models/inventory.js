@@ -6,7 +6,7 @@ export async function getInventoryForProduct(productId){
 }
 
 export async function listInventory(){
-  const res = await query('SELECT i.product_id,p.name,p.sku,p.type,i.quantity_available,i.reorder_level,i.location,i.last_updated FROM inventory i JOIN products p ON p.id=i.product_id ORDER BY p.id');
+  const res = await query('SELECT i.product_id,p.name,p.type,i.quantity_available,i.reorder_level,i.location,i.last_updated FROM inventory i JOIN products p ON p.id=i.product_id ORDER BY p.id');
   return res.rows;
 }
 

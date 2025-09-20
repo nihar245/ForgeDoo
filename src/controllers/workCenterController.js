@@ -2,9 +2,19 @@ import Joi from 'joi';
 import { listWorkCenters, getWorkCenter, createWorkCenter, updateWorkCenter, deleteWorkCenter, getWorkCenterUtilization, upsertWorkCenter } from '../models/workCenters.js';
 import { notFound } from '../core/apiError.js';
 
-const schema = Joi.object({ name: Joi.string().required(), hourly_cost: Joi.number().positive().required(), capacity: Joi.number().integer().min(1).default(1), location: Joi.string().allow('',null) });
+const schema = Joi.object({
+	name: Joi.string().required(),
+	cost_per_hour: Joi.number().positive().required(),
+	capacity_per_hour: Joi.number().integer().min(1).default(1),
+	location: Joi.string().allow('',null)
+});
 const utilizationSchema = Joi.object({ start: Joi.date().required(), end: Joi.date().required() });
-const upsertSchema = Joi.object({ name: Joi.string().required(), hourly_cost: Joi.number().positive().required(), capacity: Joi.number().integer().min(1).default(1), location: Joi.string().allow('',null) });
+const upsertSchema = Joi.object({
+	name: Joi.string().required(),
+	cost_per_hour: Joi.number().positive().required(),
+	capacity_per_hour: Joi.number().integer().min(1).default(1),
+	location: Joi.string().allow('',null)
+});
 
 export async function list(req,res,next){ try { res.json({ items: await listWorkCenters() }); } catch(e){ next(e);} }
 export async function get(req,res,next){ try { const wc = await getWorkCenter(req.params.id); if(!wc) throw notFound('Work center'); res.json({ item: wc }); } catch(e){ next(e);} }

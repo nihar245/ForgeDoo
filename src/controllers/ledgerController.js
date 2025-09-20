@@ -1,9 +1,9 @@
 import Joi from 'joi';
 import { query } from '../config/db.js';
-import { adjustInventory } from '../models/inventory.js';
+// inventory table removed: derive on_hand from stock_ledger (in - out)
 
 // GET /ledger : stock summary (one row per product)
-// Fields: product_id, sku, name, uom, unit_cost, on_hand, free_to_use (alias of on_hand for now), incoming, outgoing, total_value
+// Fields: product_id, name, uom, unit_cost, on_hand, free_to_use (alias of on_hand for now), incoming, outgoing, total_value
 export async function stockSummary(_req,res,next){
   try {
     const sql = `
@@ -14,14 +14,13 @@ export async function stockSummary(_req,res,next){
         FROM stock_ledger
         GROUP BY product_id
       )
-      SELECT p.id AS product_id, p.sku, p.name, p.uom, COALESCE(p.unit_cost,0) AS unit_cost,
-             COALESCE(i.quantity_available,0) AS on_hand,
-             COALESCE(i.quantity_available,0) AS free_to_use,
+      SELECT p.id AS product_id, p.name, p.uom, COALESCE(p.unit_cost,0) AS unit_cost,
+             COALESCE(mv.incoming,0) - COALESCE(mv.outgoing,0) AS on_hand,
+             COALESCE(mv.incoming,0) - COALESCE(mv.outgoing,0) AS free_to_use,
              COALESCE(mv.incoming,0) AS incoming,
              COALESCE(mv.outgoing,0) AS outgoing,
-             (COALESCE(i.quantity_available,0) * COALESCE(p.unit_cost,0)) AS total_value
+             ((COALESCE(mv.incoming,0) - COALESCE(mv.outgoing,0)) * COALESCE(p.unit_cost,0)) AS total_value
       FROM products p
-      LEFT JOIN inventory i ON i.product_id = p.id
       LEFT JOIN mv ON mv.product_id = p.id
       ORDER BY p.id`;
     const r = await query(sql);
@@ -51,8 +50,9 @@ export async function addStock(req,res,next){
     if(unit_cost !== undefined){
       await query('UPDATE products SET unit_cost=$2 WHERE id=$1',[pid, unit_cost]);
     }
-    const inv = await adjustInventory({ productId: pid, quantity, movement_type, reference });
-    // Return updated single product summary row
+    // Insert ledger movement
+    await query('INSERT INTO stock_ledger(product_id, movement_type, quantity, reference) VALUES($1,$2,$3,$4)',[pid, movement_type, quantity, reference||null]);
+    // Return updated computed summary for that product
     const r = await query(`
       WITH mv AS (
         SELECT product_id,
@@ -60,17 +60,16 @@ export async function addStock(req,res,next){
                SUM(CASE WHEN movement_type='out' THEN quantity ELSE 0 END) AS outgoing
         FROM stock_ledger WHERE product_id=$1 GROUP BY product_id
       )
-      SELECT p.id AS product_id, p.sku, p.name, p.uom, COALESCE(p.unit_cost,0) AS unit_cost,
-             COALESCE($2::numeric,0) + 0 AS last_quantity_change,
-             COALESCE(i.quantity_available,0) AS on_hand,
-             COALESCE(i.quantity_available,0) AS free_to_use,
+      SELECT p.id AS product_id, p.name, p.uom, COALESCE(p.unit_cost,0) AS unit_cost,
+             (COALESCE(mv.incoming,0) - COALESCE(mv.outgoing,0)) AS on_hand,
+             (COALESCE(mv.incoming,0) - COALESCE(mv.outgoing,0)) AS free_to_use,
              COALESCE(mv.incoming,0) AS incoming,
              COALESCE(mv.outgoing,0) AS outgoing,
-             (COALESCE(i.quantity_available,0) * COALESCE(p.unit_cost,0)) AS total_value
+             ((COALESCE(mv.incoming,0) - COALESCE(mv.outgoing,0)) * COALESCE(p.unit_cost,0)) AS total_value,
+             CASE WHEN $2::text='in' THEN $3::numeric ELSE -$3::numeric END AS last_quantity_change
       FROM products p
-      LEFT JOIN inventory i ON i.product_id = p.id
       LEFT JOIN mv ON mv.product_id = p.id
-      WHERE p.id=$1`,[pid, movement_type==='in'? quantity : -quantity]);
-    res.status(201).json({ data: r.rows[0], inventory: inv });
+      WHERE p.id=$1`,[pid, movement_type, quantity]);
+    res.status(201).json({ data: r.rows[0] });
   } catch(e){ next(e); }
 }

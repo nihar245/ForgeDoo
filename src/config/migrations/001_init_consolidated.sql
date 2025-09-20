@@ -48,15 +48,16 @@ CREATE TABLE password_resets(
 CREATE INDEX idx_password_resets_email ON password_resets(email);
 
 -- =============================
--- PRODUCTS
+-- PRODUCTS (Unified: Raw Materials + Finished Products)
 -- =============================
 CREATE TABLE products(
   id SERIAL PRIMARY KEY,
-  sku VARCHAR(30) UNIQUE NOT NULL,
   name VARCHAR(120) NOT NULL,
-  type VARCHAR(30) NOT NULL CHECK (type IN ('finished','raw_material','semi_finished')),
+  category VARCHAR(30) NOT NULL CHECK (category IN ('raw_material','semi_finished','finished')),
+  type VARCHAR(30) NOT NULL CHECK (type IN ('finished','raw_material','semi_finished')), -- Legacy compatibility
   uom VARCHAR(30) NOT NULL,
   unit_cost DECIMAL(12,4) DEFAULT 0,
+  is_component BOOLEAN DEFAULT FALSE, -- Helper flag: true for raw materials, false for finished products
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -76,7 +77,7 @@ CREATE TABLE bom(
 CREATE TABLE bom_components(
   id SERIAL PRIMARY KEY,
   bom_id INT REFERENCES bom(id) ON DELETE CASCADE,
-  component_product_id INT REFERENCES products(id),
+  product_id INT REFERENCES products(id), -- References raw material from unified products table
   quantity DECIMAL(10,2) NOT NULL
 );
 
@@ -84,10 +85,12 @@ CREATE TABLE bom_operations(
   id SERIAL PRIMARY KEY,
   bom_id INT REFERENCES bom(id) ON DELETE CASCADE,
   operation_name VARCHAR(100) NOT NULL,
-  workcenter_id INT,
+  sequence INT NOT NULL, -- ✅ ADD THIS
+  workcenter_id INT REFERENCES work_centers(id), -- ✅ ADD FK CONSTRAINT
   duration_mins INT
 );
-
+ALTER TABLE bom ADD CONSTRAINT unique_product_version UNIQUE (product_id, version);
+ALTER TABLE bom_operations ADD CONSTRAINT unique_bom_sequence UNIQUE (bom_id, sequence);
 --
 -- =============================
 -- WORK CENTERS
@@ -145,15 +148,6 @@ CREATE TABLE stock_ledger(
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE inventory(
-  id SERIAL PRIMARY KEY,
-  product_id INT REFERENCES products(id) UNIQUE,
-  quantity_available DECIMAL(12,2) DEFAULT 0,
-  reorder_level INT DEFAULT 0,
-  location VARCHAR(100),
-  last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
 
 -- =============================
 -- ASSIGNEE TRIGGER (enforce operator role)
@@ -180,6 +174,5 @@ CREATE INDEX idx_mo_status ON manufacturing_orders(status);
 CREATE INDEX idx_mo_product ON manufacturing_orders(product_id);
 CREATE INDEX idx_wo_mo ON work_orders(mo_id);
 CREATE INDEX idx_ledger_product ON stock_ledger(product_id);
-CREATE INDEX idx_inv_product ON inventory(product_id);
 
 -- End unified init

@@ -76,7 +76,7 @@ async function getEffectiveBOM(product_id, explicitBomId){
   const r = await query(sql,[product_id, explicitBomId||0]);
   if(!r.rowCount) return null;
   const bomId = r.rows[0].id;
-  const comps = await query('SELECT component_product_id, quantity FROM bom_components WHERE bom_id=$1',[bomId]);
+  const comps = await query('SELECT product_id, quantity FROM bom_components WHERE bom_id=$1',[bomId]);
   return { id: bomId, components: comps.rows };
 }
 
@@ -96,25 +96,30 @@ export async function checkAndReserveComponents(mo_id){
       return { status: 'available', reserved: [] };
     }
     // Compute required quantities
-    const requirements = bom.components.map(c=>({ product_id: c.component_product_id, required: Number(c.quantity)* mo.quantity }));
-    // Lock inventory rows
-    for(const req of requirements){
-      await client.query('SELECT product_id FROM inventory WHERE product_id=$1 FOR UPDATE',[req.product_id]);
+    const requirements = bom.components.map(c=>({ product_id: c.product_id, required: Number(c.quantity)* mo.quantity }));
+    // Compute availability from stock_ledger aggregates
+    const availabilityMap = new Map();
+    const ids = requirements.map(r=>r.product_id);
+    if(ids.length){
+      const agg = await client.query(`SELECT product_id,
+        SUM(CASE WHEN movement_type='in' THEN quantity ELSE 0 END) AS incoming,
+        SUM(CASE WHEN movement_type='out' THEN quantity ELSE 0 END) AS outgoing
+        FROM stock_ledger WHERE product_id = ANY($1::int[]) GROUP BY product_id`,[ids]);
+      for(const row of agg.rows){
+        availabilityMap.set(row.product_id, Number(row.incoming||0) - Number(row.outgoing||0));
+      }
     }
-    // Check availability
     for(const req of requirements){
-      const inv = await client.query('SELECT quantity_available FROM inventory WHERE product_id=$1',[req.product_id]);
-      const available = inv.rowCount? Number(inv.rows[0].quantity_available):0;
+      const available = availabilityMap.get(req.product_id) || 0;
       if(available < req.required){
         await client.query('UPDATE manufacturing_orders SET component_status=$2 WHERE id=$1',[mo_id,'not_available']);
         await client.query('COMMIT');
         return { status: 'not_available', lacking: req.product_id };
       }
     }
-    // Reserve (deduct) inventory and add ledger entries
+    // Reserve components logically by inserting out movements (no separate inventory table adjustment)
     const reference = `MO-${mo.id}-RESERVE`;
     for(const req of requirements){
-      await client.query('UPDATE inventory SET quantity_available = quantity_available - $2, last_updated=NOW() WHERE product_id=$1',[req.product_id, req.required]);
       await client.query('INSERT INTO stock_ledger(product_id, movement_type, quantity, reference) VALUES($1, $2, $3, $4)',[req.product_id,'out',req.required,reference]);
     }
     await client.query('UPDATE manufacturing_orders SET component_status=$2 WHERE id=$1',[mo_id,'available']);
@@ -140,10 +145,12 @@ export async function computeComponentsAvailability(mo_id){
   const rows = [];
   for(const c of bom.components){
     const required = Number(c.quantity) * mo.quantity;
-    const inv = await query('SELECT quantity_available FROM inventory WHERE product_id=$1',[c.component_product_id]);
-    const available = inv.rowCount? Number(inv.rows[0].quantity_available):0;
+  const agg = await query('SELECT SUM(CASE WHEN movement_type=\'in\' THEN quantity ELSE 0 END) AS incoming, SUM(CASE WHEN movement_type=\'out\' THEN quantity ELSE 0 END) AS outgoing FROM stock_ledger WHERE product_id=$1',[c.product_id]);
+  const incoming = Number(agg.rows[0]?.incoming||0);
+  const outgoing = Number(agg.rows[0]?.outgoing||0);
+  const available = incoming - outgoing;
     rows.push({
-      component_product_id: c.component_product_id,
+      product_id: c.product_id,
       required,
       available,
       status: available >= required ? 'sufficient' : 'insufficient'
