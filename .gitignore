@@ -1,0 +1,7 @@
+# Logs
+logs/*.log
+logs/*.gz
+logs/
+
+# Keep directory
+logs/.gitkeep

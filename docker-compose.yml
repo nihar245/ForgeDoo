@@ -1,0 +1,66 @@
+version: '3.9'
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: manufacturing
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+  api:
+    build: .
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/manufacturing
+      CORS_ORIGIN: http://localhost:5173
+      LOG_LEVEL: info
+      JWT_SECRET: dev_change_me_please_dev_change_me
+      # Redis configuration (added so the API container talks to the redis service
+      # instead of trying localhost/::1 inside the container)
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_ENABLED: 'true'
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./logs:/var/log/app
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+  loki:
+    image: grafana/loki:2.9.1
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki-config.yml:/etc/loki/local-config.yaml:ro
+  promtail:
+    image: grafana/promtail:2.9.1
+    volumes:
+      - ./promtail-config.yml:/etc/promtail/config.yml:ro
+      - ./logs:/var/log/app
+    command: -config.file=/etc/promtail/config.yml
+volumes:
+  pgdata:
+  grafana_data:

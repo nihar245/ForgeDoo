@@ -1,0 +1,94 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "OdooXNMIT Manufacturing API", "version": "1.0.0" },
+  "servers": [ { "url": "/" } ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" }
+    },
+    "schemas": {
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "sku": { "type": "string" },
+          "name": { "type": "string" },
+          "type": { "type": "string" },
+          "uom": { "type": "string" }
+        }
+      },
+      "ManufacturingOrder": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "product_id": { "type": "integer" },
+          "quantity": { "type": "integer" },
+          "status": { "type": "string" }
+        }
+      },
+      "WorkOrder": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "mo_id": { "type": "integer" },
+          "operation_name": { "type": "string" },
+          "status": { "type": "string" }
+        }
+      }
+    }
+  },
+  "security": [ { "bearerAuth": [] } ],
+  "paths": {
+    "/health": {
+      "get": { "summary": "Health check", "responses": { "200": { "description": "OK" } } }
+    },
+    "/products": {
+      "get": { 
+        "summary": "List products", 
+        "responses": { 
+          "200": { 
+            "description": "List", 
+            "content": { 
+              "application/json": { 
+                "schema": { 
+                  "type": "object", 
+                  "properties": { 
+                    "items": { 
+                      "type": "array", 
+                      "items": { "$ref": "#/components/schemas/Product" } 
+                    } 
+                  } 
+                } 
+              } 
+            } 
+          } 
+        } 
+      },
+      "post": { "summary": "Create product", "responses": { "201": { "description": "Created" } } }
+    },
+    "/products/{id}": {
+      "get": { 
+        "summary": "Get product", 
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ], 
+        "responses": { "200": { "description": "OK" }, "404": { "description": "Not found" } } 
+      }
+    },
+    "/mos": {
+      "get": { "summary": "List MOs", "responses": { "200": { "description": "OK" } } },
+      "post": { "summary": "Create MO", "responses": { "201": { "description": "Created" } } }
+    },
+    "/mos/{id}/confirm": {
+      "post": { "summary": "Confirm MO", "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ], "responses": { "200": { "description": "Confirmed" } } }
+    },
+    "/mos/{id}/start": {
+      "post": { "summary": "Start MO", "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ], "responses": { "200": { "description": "Started" } } }
+    },
+    "/mos/{id}/request-close": {
+      "post": { "summary": "Request close MO", "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ], "responses": { "200": { "description": "To close" } } }
+    },
+    "/mos/{id}/complete": {
+      "post": { "summary": "Complete MO", "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ], "responses": { "200": { "description": "Not Assigned" } } }
+    }
+  }
+}
+
