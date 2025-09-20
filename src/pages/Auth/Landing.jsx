@@ -1,8 +1,50 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Factory, BarChart3, Users, Package, Settings, Cog, Box, Wrench } from 'lucide-react'
 import brandLogo from '../../../mockup/logo.jpeg'
+
+const TypewriterText = ({ text, delay = 0, speed = 50 }) => {
+  const [displayedText, setDisplayedText] = useState('')
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [startAnimation, setStartAnimation] = useState(false)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setStartAnimation(true)
+    }, delay)
+
+    return () => clearTimeout(timer)
+  }, [delay])
+
+  useEffect(() => {
+    if (!startAnimation) return
+
+    if (currentIndex < text.length) {
+      const timer = setTimeout(() => {
+        setDisplayedText(prev => prev + text[currentIndex])
+        setCurrentIndex(prev => prev + 1)
+      }, speed)
+
+      return () => clearTimeout(timer)
+    }
+  }, [currentIndex, text, startAnimation, speed])
+
+  return (
+    <span>
+      {displayedText}
+      {startAnimation && currentIndex < text.length && (
+        <motion.span
+          animate={{ opacity: [1, 0, 1] }}
+          transition={{ duration: 0.8, repeat: Infinity }}
+          className="text-blue-600"
+        >
+          |
+        </motion.span>
+      )}
+    </span>
+  )
+}
 
 const Landing = () => {
   const features = [
@@ -35,11 +77,19 @@ const Landing = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <Link to="/" className="flex items-center gap-3">
-              <img 
-                src={brandLogo} 
-                alt="ForgeDoo Logo" 
-                className="w-10 h-10 rounded-lg object-contain ring-1 ring-slate-200 shadow-sm hover:shadow transition"
-              />
+              <div className="relative">
+                <div className="p-2 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg ring-2 ring-blue-200 shadow-sm">
+                  <img 
+                    src={brandLogo} 
+                    alt="ForgeDoo Logo" 
+                    className="w-6 h-6 object-contain filter drop-shadow-sm"
+                    style={{
+                      filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.3))'
+                    }}
+                  />
+                </div>
+                <div className="absolute -inset-1 bg-gradient-to-r from-blue-400 to-blue-600 rounded-lg blur opacity-30 animate-pulse"></div>
+              </div>
               <span className="text-xl font-bold text-slate-800">ForgeDoo</span>
             </Link>
             
@@ -154,8 +204,11 @@ const Landing = () => {
               transition={{ duration: 0.8, delay: 0.4 }}
               className="text-xl text-slate-600 mb-10 max-w-3xl mx-auto leading-relaxed"
             >
-              Streamline your production workflow with our comprehensive ERP solution. 
-              From manufacturing orders to inventory management, everything you need in one place.
+              <TypewriterText 
+                text="Streamline your production workflow with our comprehensive ERP solution. From manufacturing orders to inventory management, everything you need in one place."
+                delay={800}
+                speed={30}
+              />
             </motion.p>
             
             <motion.div
@@ -229,11 +282,19 @@ const Landing = () => {
             {/* Brand */}
             <div className="text-center lg:text-left">
               <div className="inline-flex items-center gap-3 mb-6 lg:justify-start">
-                <img 
-                  src={brandLogo} 
-                  alt="ForgeDoo Logo" 
-                  className="w-12 h-12 rounded-lg object-contain ring-1 ring-white/20 shadow-sm"
-                />
+                <div className="relative">
+                  <div className="p-2 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg ring-2 ring-blue-200 shadow-sm">
+                    <img 
+                      src={brandLogo} 
+                      alt="ForgeDoo Logo" 
+                      className="w-8 h-8 object-contain filter drop-shadow-sm"
+                      style={{
+                        filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.3))'
+                      }}
+                    />
+                  </div>
+                  <div className="absolute -inset-1 bg-gradient-to-r from-blue-400 to-blue-600 rounded-lg blur opacity-30 animate-pulse"></div>
+                </div>
                 <div>
                   <h3 className="text-2xl font-bold">ForgeDoo</h3>
                   <p className="text-sm text-slate-300">Manufacturing ERP</p>

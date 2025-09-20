@@ -45,6 +45,16 @@ const Reports = () => {
     { name: 'Quality Control', value: 20, color: '#f59e0b' }, // amber-500
   ]
 
+  const productVariety = [
+    { name: 'Dining Table', value: 500, color: '#3b82f6' }, // blue-500
+    { name: 'Chair Set', value: 60, color: '#10b981' }, // emerald-500
+    { name: 'Coffee Table', value: 30, color: '#f59e0b' }, // amber-500
+    { name: 'Bookshelf', value: 50, color: '#8b5cf6' }, // violet-500
+    { name: 'Office Desk', value: 35, color: '#ef4444' }, // red-500
+    { name: 'Drawer', value: 20, color: '#06b6d4' }, // cyan-500
+    { name: 'Wardrobe', value: 25, color: '#84cc16' }, // lime-500
+  ]
+
   const delayedOrders = [
     { product: 'Wooden Table', days: 3, reason: 'Material shortage' },
     { product: 'Chair Set', days: 1, reason: 'Machine maintenance' },
@@ -55,6 +65,7 @@ const Reports = () => {
     { id: 'production', name: 'Production Trends', icon: BarChart },
     { id: 'stock', name: 'Stock Analysis', icon: LineChart },
     { id: 'resource', name: 'Resource Utilization', icon: PieChart },
+    { id: 'variety', name: 'Product Variety Analysis', icon: PieChart },
     { id: 'delays', name: 'Delay Analysis', icon: Calendar },
   ]
 
@@ -138,6 +149,78 @@ const Reports = () => {
             </ResponsiveContainer>
           </div>
         )
+
+      case 'variety':
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="glass p-6 rounded-xl">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Product Variety Analysis</h3>
+              <ResponsiveContainer width="100%" height={400}>
+                <RechartsPieChart>
+                  <Pie
+                    data={productVariety}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={120}
+                    dataKey="value"
+                    label={({ name, value }) => `${name}: ${value}`}
+                  >
+                    {productVariety.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.25)',
+                      backdropFilter: 'blur(16px)',
+                      border: '1px solid rgba(255, 255, 255, 0.18)',
+                      borderRadius: '8px'
+                    }}
+                  />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="glass p-6 rounded-xl">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Product Summary</h3>
+                <div className="space-y-3">
+                  {productVariety.map((product, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 neomorphism-inset rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-4 h-4 rounded-full" style={{ backgroundColor: product.color }}></div>
+                        <span className="font-medium text-gray-900">{product.name}</span>
+                      </div>
+                      <span className="text-lg font-bold text-gray-700">{product.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="glass p-6 rounded-xl">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Key Metrics</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center p-4 neomorphism-inset rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600">{productVariety.length}</div>
+                    <div className="text-sm text-gray-600">Product Types</div>
+                  </div>
+                  <div className="text-center p-4 neomorphism-inset rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">{productVariety.reduce((sum, p) => sum + p.value, 0)}</div>
+                    <div className="text-sm text-gray-600">Total Units</div>
+                  </div>
+                  <div className="text-center p-4 neomorphism-inset rounded-lg">
+                    <div className="text-2xl font-bold text-purple-600">{Math.max(...productVariety.map(p => p.value))}</div>
+                    <div className="text-sm text-gray-600">Highest Stock</div>
+                  </div>
+                  <div className="text-center p-4 neomorphism-inset rounded-lg">
+                    <div className="text-2xl font-bold text-orange-600">{Math.min(...productVariety.map(p => p.value))}</div>
+                    <div className="text-sm text-gray-600">Lowest Stock</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
       
       case 'delays':
         return (
@@ -207,7 +290,7 @@ const Reports = () => {
 
       {/* Report Type Selector */}
       <div className="glass p-6 rounded-xl">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {reportTypes.map((type) => (
             <button
               key={type.id}

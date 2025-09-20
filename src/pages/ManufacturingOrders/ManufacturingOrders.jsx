@@ -54,30 +54,37 @@ const ManufacturingOrders = () => {
       <div className="glass p-6 rounded-xl">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
               type="text"
               placeholder="Search by reference or product name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="neomorphism-inset w-full pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+              className="w-full pl-10 pr-4 py-3 rounded-lg border-2 border-slate-200 focus:border-blue-500 focus:ring-0 bg-white text-slate-800 hover:border-blue-300 transition-colors"
             />
           </div>
           <div className="flex items-center space-x-4">
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="neomorphism-inset px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="all">All Status</option>
-              <option value="draft">Draft</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="inprogress">In Progress</option>
-              <option value="toclose">To Close</option>
-              <option value="done">Done</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-            <button className="neomorphism p-2 rounded-lg hover:shadow-glow transition-all">
+            <div className="relative">
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="w-full px-4 py-3 pr-10 rounded-lg border-2 border-slate-200 focus:border-blue-500 focus:ring-0 bg-white text-slate-800 appearance-none cursor-pointer hover:border-blue-300 transition-colors font-medium"
+              >
+                <option value="all">All Status</option>
+                <option value="draft">Draft</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="inprogress">In Progress</option>
+                <option value="toclose">To Close</option>
+                <option value="done">Done</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+            <button className="neomorphism p-3 rounded-lg hover:shadow-glow transition-all">
               <Filter className="w-5 h-5 text-gray-600" />
             </button>
           </div>
@@ -85,18 +92,18 @@ const ManufacturingOrders = () => {
       </div>
 
       {/* Orders Table */}
-      <div className="glass rounded-xl overflow-hidden">
+      <div className="glass rounded-xl overflow-hidden shadow-lg border border-slate-200">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-white/20">
+            <thead className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200">
               <tr>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Reference</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Start Date</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Finished Product</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Component Status</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Quantity</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Unit</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">State</th>
+                <th className="text-left py-5 px-6 text-sm font-semibold text-slate-700 tracking-wide">Reference</th>
+                <th className="text-left py-5 px-6 text-sm font-semibold text-slate-700 tracking-wide">Start Date</th>
+                <th className="text-left py-5 px-6 text-sm font-semibold text-slate-700 tracking-wide">Finished Product</th>
+                <th className="text-left py-5 px-6 text-sm font-semibold text-slate-700 tracking-wide">Component Status</th>
+                <th className="text-left py-5 px-6 text-sm font-semibold text-slate-700 tracking-wide">Quantity</th>
+                <th className="text-left py-5 px-6 text-sm font-semibold text-slate-700 tracking-wide">Unit</th>
+                <th className="text-left py-5 px-6 text-sm font-semibold text-slate-700 tracking-wide">State</th>
               </tr>
             </thead>
             <tbody>
@@ -106,20 +113,20 @@ const ManufacturingOrders = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: index * 0.1 }}
-                  className="border-b border-white/10 hover:bg-white/10 transition-colors cursor-pointer"
+                  className="border-b border-slate-100 hover:bg-blue-50/50 transition-all duration-200 cursor-pointer group"
                   onClick={() => navigate(`/manufacturing-orders/${order.id}`)}
                 >
-                  <td className="py-4 px-6 font-medium text-gray-900">{order.id}</td>
-                  <td className="py-4 px-6 text-gray-700">{order.startDate}</td>
-                  <td className="py-4 px-6 text-gray-700">{order.product}</td>
-                  <td className="py-4 px-6">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ring-1 ring-gray-300 ${order.componentStatus === 'Available' ? 'bg-gray-100 text-gray-800' : 'bg-white text-gray-700'}`}>
+                  <td className="py-5 px-6 font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">{order.id}</td>
+                  <td className="py-5 px-6 text-slate-600 font-medium">{order.startDate}</td>
+                  <td className="py-5 px-6 text-slate-700 font-medium">{order.product}</td>
+                  <td className="py-5 px-6">
+                    <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold ring-1 ${order.componentStatus === 'Available' ? 'bg-green-50 text-green-700 ring-green-200' : 'bg-slate-50 text-slate-600 ring-slate-200'}`}>
                       {order.componentStatus}
                     </span>
                   </td>
-                  <td className="py-4 px-6 text-gray-700">{order.quantity}</td>
-                  <td className="py-4 px-6 text-gray-700">{order.unit}</td>
-                  <td className="py-4 px-6">
+                  <td className="py-5 px-6 text-slate-700 font-semibold">{order.quantity}</td>
+                  <td className="py-5 px-6 text-slate-600 font-medium">{order.unit}</td>
+                  <td className="py-5 px-6">
                     <StatusBadge status={order.state || 'Draft'} />
                   </td>
                 </motion.tr>
@@ -131,29 +138,29 @@ const ManufacturingOrders = () => {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="glass p-6 rounded-xl text-center">
-          <div className="text-2xl font-bold text-blue-600 mb-2">
+        <div className="glass p-6 rounded-xl text-center border border-slate-200 hover:shadow-lg transition-all duration-200">
+          <div className="text-3xl font-bold text-blue-600 mb-2">
             {orders.filter(o => o.status === 'Planned').length}
           </div>
-          <div className="text-sm text-gray-600">Planned Orders</div>
+          <div className="text-sm text-slate-600 font-medium">Planned Orders</div>
         </div>
-        <div className="glass p-6 rounded-xl text-center">
-          <div className="text-2xl font-bold text-orange-600 mb-2">
+        <div className="glass p-6 rounded-xl text-center border border-slate-200 hover:shadow-lg transition-all duration-200">
+          <div className="text-3xl font-bold text-orange-600 mb-2">
             {orders.filter(o => o.status === 'In Progress').length}
           </div>
-          <div className="text-sm text-gray-600">In Progress</div>
+          <div className="text-sm text-slate-600 font-medium">In Progress</div>
         </div>
-        <div className="glass p-6 rounded-xl text-center">
-          <div className="text-2xl font-bold text-green-600 mb-2">
+        <div className="glass p-6 rounded-xl text-center border border-slate-200 hover:shadow-lg transition-all duration-200">
+          <div className="text-3xl font-bold text-green-600 mb-2">
             {orders.filter(o => o.status === 'Completed').length}
           </div>
-          <div className="text-sm text-gray-600">Completed</div>
+          <div className="text-sm text-slate-600 font-medium">Completed</div>
         </div>
-        <div className="glass p-6 rounded-xl text-center">
-          <div className="text-2xl font-bold text-gray-600 mb-2">
+        <div className="glass p-6 rounded-xl text-center border border-slate-200 hover:shadow-lg transition-all duration-200">
+          <div className="text-3xl font-bold text-slate-700 mb-2">
             {orders.reduce((sum, o) => sum + o.quantity, 0)}
           </div>
-          <div className="text-sm text-gray-600">Total Quantity</div>
+          <div className="text-sm text-slate-600 font-medium">Total Quantity</div>
         </div>
       </div>
     </div>

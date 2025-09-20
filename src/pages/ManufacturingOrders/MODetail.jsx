@@ -109,17 +109,17 @@ export default function MODetail() {
         </div>
         <div className="flex items-center gap-2">
           {/* state buttons per spec */}
-          <button disabled={mo.state !== 'Draft'} onClick={onConfirm} className={`px-4 py-2 rounded-lg text-sm font-medium ${mo.state === 'Draft' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 cursor-not-allowed'}`}>Confirm</button>
-          <button disabled={!['Confirmed','In Progress'].includes(mo.state)} onClick={onStart} className={`px-4 py-2 rounded-lg text-sm font-medium ${['Confirmed','In Progress'].includes(mo.state) ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 cursor-not-allowed'}`}>Start</button>
-          <button disabled={!['To Close','In Progress','Confirmed'].includes(mo.state)} onClick={onProduce} className={`px-4 py-2 rounded-lg text-sm font-medium ${['To Close','In Progress','Confirmed'].includes(mo.state) ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 cursor-not-allowed'}`}>Produce</button>
-          <button disabled={mo.state === 'Done'} onClick={onCancel} className={`px-4 py-2 rounded-lg text-sm font-medium ${mo.state !== 'Done' ? 'bg-gray-50 ring-1 ring-gray-200 text-gray-800' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>Cancel</button>
+          <button disabled={mo.state !== 'Draft'} onClick={onConfirm} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${mo.state === 'Draft' ? 'bg-blue-600 text-white shadow-lg hover:bg-blue-700' : 'bg-gray-100 text-gray-500 cursor-not-allowed'}`}>Confirm</button>
+          <button disabled={!['Confirmed','In Progress'].includes(mo.state)} onClick={onStart} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${['Confirmed','In Progress'].includes(mo.state) ? 'bg-blue-600 text-white shadow-lg hover:bg-blue-700' : 'bg-gray-100 text-gray-500 cursor-not-allowed'}`}>Start</button>
+          <button disabled={!['To Close','In Progress','Confirmed'].includes(mo.state)} onClick={onProduce} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${['To Close','In Progress','Confirmed'].includes(mo.state) ? 'bg-blue-600 text-white shadow-lg hover:bg-blue-700' : 'bg-gray-100 text-gray-500 cursor-not-allowed'}`}>Produce</button>
+          <button disabled={mo.state === 'Done'} onClick={onCancel} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${mo.state !== 'Done' ? 'bg-gray-50 ring-1 ring-gray-200 text-gray-800 hover:bg-gray-100' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>Cancel</button>
         </div>
       </div>
 
       {/* State badges bar */}
       <div className="flex items-center gap-3">
         {STATES.map(s => (
-          <div key={s} className={`px-3 py-2 rounded-lg text-sm font-medium ${mo.state === s ? 'bg-black text-white' : 'bg-gray-100 text-gray-700'}`}>{s}</div>
+          <div key={s} className={`px-3 py-2 rounded-lg text-sm font-medium ${mo.state === s ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-100 text-gray-700'}`}>{s}</div>
         ))}
       </div>
 
@@ -181,8 +181,8 @@ export default function MODetail() {
 
       {/* Tabs */}
       <div className="flex items-center gap-2">
-        <button onClick={()=>setActiveTab('components')} className={`px-4 py-2 rounded-lg text-sm font-medium ${activeTab==='components'?'bg-black text-white':'bg-gray-100 text-gray-700'}`}>Components</button>
-        <button onClick={()=>setActiveTab('workorders')} className={`px-4 py-2 rounded-lg text-sm font-medium ${activeTab==='workorders'?'bg-black text-white':'bg-gray-100 text-gray-700'}`}>Work Orders</button>
+        <button onClick={()=>setActiveTab('components')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab==='components'?'bg-blue-600 text-white shadow-lg':'bg-gray-100 text-gray-700 hover:bg-blue-50 hover:text-blue-600'}`}>Components</button>
+        <button onClick={()=>setActiveTab('workorders')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab==='workorders'?'bg-blue-600 text-white shadow-lg':'bg-gray-100 text-gray-700 hover:bg-blue-50 hover:text-blue-600'}`}>Work Orders</button>
       </div>
 
       {activeTab === 'components' ? (

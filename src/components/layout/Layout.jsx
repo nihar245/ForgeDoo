@@ -223,7 +223,7 @@ const Layout = ({ children }) => {
         </header>
 
         {/* Page Content */}
-        <main className="p-6 overflow-x-hidden bg-slate-50">
+        <main className="pt-6 pr-6 pb-6 pl-0 overflow-x-hidden bg-slate-50">
           <div className="w-full max-w-[100vw] mx-auto overflow-x-hidden">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
