@@ -42,10 +42,12 @@ function App() {
               toastOptions={{
                 duration: 4000,
                 style: {
-                  background: 'rgba(255, 255, 255, 0.25)',
-                  backdropFilter: 'blur(16px)',
-                  border: '1px solid rgba(255, 255, 255, 0.18)',
-                  color: '#1f2937',
+                  background: 'rgba(255, 255, 255, 0.95)',
+                  backdropFilter: 'blur(12px)',
+                  border: '1px solid rgba(226, 232, 240, 0.6)',
+                  color: '#1e293b',
+                  borderRadius: '8px',
+                  boxShadow: '0 8px 32px rgba(59, 130, 246, 0.08)',
                 },
               }}
             />

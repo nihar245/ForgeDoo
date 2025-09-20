@@ -99,12 +99,12 @@ const Layout = ({ children }) => {
                     className="w-10 h-10 rounded-lg object-contain ring-1 ring-gray-200 shadow-sm"
                   />
                 </Link>
-                <span className="text-base sm:text-lg font-semibold text-gray-900">ForgeDoo</span>
+                <span className="text-lg font-bold text-slate-800">ForgeDoo</span>
               </div>
               {/* Right: Bell + Avatar/Login + Greeting */}
               <div className="hidden md:flex items-center gap-3 justify-self-end">
-                <button className="bg-gray-50 p-2 rounded-lg hover:bg-gray-100 transition-all" aria-label="Notifications">
-                  <Bell className="w-5 h-5 text-gray-700" />
+                <button className="bg-slate-50 p-2.5 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-all duration-200" aria-label="Notifications">
+                  <Bell className="w-5 h-5" />
                 </button>
                 {isAuthenticated ? (
                   <>
@@ -112,7 +112,7 @@ const Layout = ({ children }) => {
                     <div className="relative">
                       <button
                         onClick={() => setSettingsOpen(v => !v)}
-                        className="w-8 h-8 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-semibold"
+                        className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center text-sm font-bold shadow-lg hover:shadow-xl transition-all duration-200"
                         aria-label="Profile menu"
                       >
                         {(user?.name || user?.username || 'U')
@@ -123,10 +123,30 @@ const Layout = ({ children }) => {
                           .toUpperCase()}
                       </button>
                       {settingsOpen && (
-                        <div className="absolute right-0 mt-2 w-44 glass rounded-lg shadow-lg p-1 z-50">
-                          <Link to="/profile" className="block px-3 py-2 rounded-md text-sm text-gray-800 hover:bg-gray-100">My Profile</Link>
-                          <Link to="/reports" className="block px-3 py-2 rounded-md text-sm text-gray-800 hover:bg-gray-100">My Reports</Link>
-                          <button onClick={handleLogout} className="w-full text-left px-3 py-2 rounded-md text-sm text-red-600 hover:bg-gray-100">Logout</button>
+                        <div className="absolute right-0 mt-2 w-64 glass rounded-lg shadow-lg p-4 z-50 border border-slate-200">
+                          {/* User Info Section */}
+                          <div className="flex items-center gap-3 mb-4 pb-4 border-b border-slate-200">
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center text-lg font-bold">
+                              {(user?.name || user?.username || 'U')
+                                .split(' ')
+                                .map(p => p[0])
+                                .join('')
+                                .slice(0,2)
+                                .toUpperCase()}
+                            </div>
+                            <div className="flex-1">
+                              <div className="font-semibold text-slate-800">{user?.name || user?.username || 'User'}</div>
+                              <div className="text-sm text-slate-500">{user?.email || 'user@forgedoo.com'}</div>
+                              <div className="text-xs text-blue-600 font-medium capitalize">{user?.role || 'operator'}</div>
+                            </div>
+                          </div>
+                          {/* Menu Items */}
+                          <div className="space-y-1">
+                            <Link to="/profile" className="block px-3 py-2 rounded-md text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">My Profile</Link>
+                            <Link to="/reports" className="block px-3 py-2 rounded-md text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">My Reports</Link>
+                            <hr className="my-2 border-slate-200" />
+                            <button onClick={handleLogout} className="w-full text-left px-3 py-2 rounded-md text-sm text-red-600 hover:bg-red-50 transition-colors">Logout</button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -151,13 +171,13 @@ const Layout = ({ children }) => {
                 >
                   <Menu className="w-5 h-5" />
                 </button>
-                <button className="bg-gray-50 p-2 rounded-lg hover:bg-gray-100 transition-all" aria-label="Notifications">
-                  <Bell className="w-5 h-5 text-gray-700" />
+                <button className="bg-slate-50 p-2.5 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-all duration-200" aria-label="Notifications">
+                  <Bell className="w-5 h-5" />
                 </button>
                 {isAuthenticated ? (
                   <button
                     onClick={() => setSettingsOpen(v => !v)}
-                    className="w-8 h-8 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-semibold"
+                    className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center text-sm font-bold shadow-lg hover:shadow-xl transition-all duration-200"
                     aria-label="Profile menu"
                   >
                     {(user?.name || user?.username || 'U')
@@ -215,10 +235,10 @@ const Layout = ({ children }) => {
               role="dialog"
               aria-label="Master Menu"
             >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <img src={brandLogo} alt="Logo" className="w-8 h-8 rounded-lg ring-1 ring-gray-200" />
-                  <span className="font-semibold text-gray-900">ForgeDoo</span>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <img src={brandLogo} alt="Logo" className="w-8 h-8 rounded-lg ring-1 ring-slate-200" />
+                  <span className="font-bold text-slate-800">ForgeDoo</span>
                 </div>
                 <button
                   onClick={() => setSidebarOpen(false)}
@@ -228,7 +248,7 @@ const Layout = ({ children }) => {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <nav className="flex flex-col gap-1">
+              <nav className="flex flex-col gap-2">
                 {sidebarMenuItems.map((item) => {
                   const isActive = location.pathname === item.path
                   return (
@@ -236,11 +256,16 @@ const Layout = ({ children }) => {
                       key={item.name}
                       to={item.path}
                       onClick={() => setSidebarOpen(false)}
-                      className={`px-3 py-2 rounded-md text-sm transition-colors ${
-                        isActive ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100'
+                      className={`px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        isActive 
+                          ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg transform scale-105' 
+                          : 'text-slate-700 hover:bg-blue-50 hover:text-blue-600 hover:transform hover:scale-102'
                       }`}
                     >
-                      {item.name}
+                      <div className="flex items-center gap-3">
+                        <item.icon className="w-5 h-5" />
+                        {item.name}
+                      </div>
                     </Link>
                   )
                 })}
