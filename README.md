@@ -2,6 +2,8 @@
 
 A comprehensive Manufacturing Resource Planning (ERP) system built with modern web technologies. ForgeDoo streamlines manufacturing operations from order creation to production execution, featuring real-time inventory tracking, work order management, and comprehensive analytics.
 
+https://drive.google.com/drive/folders/1yy3Vov1RLugzBPvciMYTOlb2VRoqUT9z?usp=drive_link
+
 ## 🏗️ System Architecture
 
 <div align="center">
