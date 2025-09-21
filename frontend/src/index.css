@@ -1,0 +1,269 @@
+@import url('https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+@import "tailwindcss";
+
+:root {
+  font-family: 'Poppins', 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light;
+  color: #1e293b; /* slate-800 for better contrast */
+  background-color: #f8fafc; /* slate-50 background */
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  /* Duralux theme colors */
+  --primary-blue: #3b82f6; /* blue-500 */
+  --primary-blue-dark: #2563eb; /* blue-600 */
+  --primary-blue-light: #60a5fa; /* blue-400 */
+  --secondary-blue: #1e40af; /* blue-700 */
+  --accent-blue: #dbeafe; /* blue-100 */
+  --bg-primary: #f8fafc; /* slate-50 */
+  --bg-secondary: #ffffff; /* white */
+  --text-primary: #1e293b; /* slate-800 */
+  --text-secondary: #64748b; /* slate-500 */
+  --border-color: #e2e8f0; /* slate-200 */
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  font-family: 'Poppins', 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  background: var(--bg-primary); /* Duralux light background */
+  overflow-x: hidden; /* prevent horizontal scroll */
+  /* Keep space for scrollbar to avoid layout shift between pages */
+  scrollbar-gutter: stable both-edges;
+}
+
+@layer utilities {
+  /* Duralux Clean Glassmorphism */
+  .glass {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    box-shadow: 0 8px 32px rgba(59, 130, 246, 0.08), 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+    border: 1px solid rgba(226, 232, 240, 0.6);
+    border-radius: 12px;
+  }
+
+  .glass-dark {
+    background: rgba(30, 41, 59, 0.95); /* slate-800 */
+    color: #ffffff;
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    backdrop-filter: blur(12px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), 0 1px 0 rgba(255, 255, 255, 0.05) inset;
+    border-radius: 12px;
+  }
+
+  /* Duralux Clean Cards */
+  .neomorphism {
+    background: var(--bg-secondary);
+    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.06), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+  }
+
+  .btn-deep { background: var(--primary-blue); color: #ffffff; border-radius: 8px; }
+  .btn-deep:hover { background: var(--primary-blue-dark); }
+
+  .btn-destructive { background: #dc2626; color: #ffffff; border-radius: 8px; }
+  .btn-destructive:hover { background: #b91c1c; }
+
+  .neomorphism-inset {
+    background: var(--bg-secondary);
+    box-shadow: inset 4px 4px 12px rgba(59, 130, 246, 0.04), inset -4px -4px 12px rgba(255, 255, 255, 0.8);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+  }
+
+  /* Elevated Card (Duralux Style) */
+  .card-elevated {
+    background: var(--bg-secondary);
+    box-shadow: 0 10px 30px rgba(59, 130, 246, 0.08), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    transform: translateY(0);
+    transition: all 0.3s ease;
+  }
+  .card-elevated:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(59, 130, 246, 0.12), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  }
+
+  /* Status Badges (only R/Y/G) */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem; /* 1 */
+    padding: 0.25rem 0.75rem; /* py-1 px-3 */
+    border-radius: 9999px; /* full */
+    font-size: 0.75rem; /* text-xs */
+    font-weight: 600; /* semibold */
+    line-height: 1; 
+  }
+  .badge-green { background: #dcfce7; color: #166534; }
+  .badge-yellow { background: #fef9c3; color: #854d0e; }
+  .badge-red { background: #fee2e2; color: #991b1b; }
+
+  /* Layout Helpers (Duralux theme) */
+  .sidebar-deep { background: var(--secondary-blue); color: #ffffff; }
+  .topnav-sky { background: var(--bg-secondary); color: var(--text-primary); }
+  .kpi-bg { background: var(--bg-primary); }
+  .kpi-card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; }
+
+  /* Enhanced Button Styles (Duralux) */
+  .btn-primary {
+    background: var(--primary-blue);
+    color: #ffffff;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.25), 0 1px 0 rgba(255, 255, 255, 0.2) inset;
+    border: none;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+  }
+  .btn-primary:hover {
+    background: var(--primary-blue-dark);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35), 0 1px 0 rgba(255, 255, 255, 0.2) inset;
+    transform: translateY(-2px);
+  }
+
+  .btn-secondary {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.08), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+  }
+  .btn-secondary:hover {
+    background: var(--accent-blue);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+    transform: translateY(-2px);
+  }
+
+  /* Enhanced Input Styles (Duralux) */
+  .input-enhanced {
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.06), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+  }
+  .input-enhanced:focus {
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15), 0 2px 4px rgba(59, 130, 246, 0.06), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  }
+
+  /* Gradients (Duralux blue theme) */
+  .gradient-dark { background: linear-gradient(135deg, var(--secondary-blue) 0%, var(--primary-blue) 100%); }
+  .gradient-blue { background: linear-gradient(135deg, var(--primary-blue-light) 0%, var(--primary-blue) 100%); }
+
+  /* Text Gradients */
+  .text-gradient-primary { 
+    background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Enhanced Animations */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    25% { transform: translateY(-10px) rotate(1deg); }
+    50% { transform: translateY(-20px) rotate(0deg); }
+    75% { transform: translateY(-10px) rotate(-1deg); }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); }
+    50% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.4); }
+  }
+
+  .float-animation { animation: float 6s ease-in-out infinite; }
+  .animate-float { animation: float 8s ease-in-out infinite; }
+  .pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+
+  /* (Removed duplicate variant definitions; consolidated above) */
+
+  .hover-glow {
+    transition: all 0.3s ease;
+  }
+  .hover-glow:hover {
+    box-shadow: 0 8px 25px rgba(59, 130, 246, 0.2);
+    transform: translateY(-2px);
+  }
+
+  /* Menu item scale animation */
+  .hover\:scale-102:hover {
+    transform: scale(1.02);
+  }
+}
+
+/* Smooth scrolling */
+html { scroll-behavior: smooth; }
+html { scrollbar-gutter: stable both-edges; }
+
+/* Compact mode tweaks */
+body.compact-mode .p-6 { padding: 1rem; }
+body.compact-mode .px-6 { padding-left: 1rem; padding-right: 1rem; }
+body.compact-mode .py-4 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+
+/* Custom scrollbar (WebKit/Blink) - Duralux theme */
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track {
+  background: var(--accent-blue); /* light blue for white site */
+  border-left: 1px solid var(--border-color);
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--primary-blue-light); /* blue-400 for visibility */
+  border-radius: 9999px;
+  border: 3px solid var(--accent-blue); /* creates a gap from track for clarity */
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--primary-blue); /* blue-500 on hover */
+}
+::-webkit-scrollbar-corner { background: var(--accent-blue); }
+
+/* Firefox scrollbar */
+html, body, * {
+  scrollbar-width: thin; /* or 'auto' if you prefer a thicker bar */
+  scrollbar-color: var(--primary-blue-light) var(--accent-blue); /* thumb track */
+}
+
+/* Animation classes */
+.animate-fade-in { animation: fadeIn 0.5s ease-in-out; }
+.animate-slide-up { animation: slideUp 0.5s ease-out; }
+.animate-scale-in { animation: scaleIn 0.3s ease-out; }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
