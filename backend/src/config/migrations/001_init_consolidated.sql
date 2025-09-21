@@ -160,7 +160,10 @@ BEGIN
   IF NEW.assignee_id IS NULL THEN RETURN NEW; END IF;
   SELECT role INTO r_role FROM users WHERE id = NEW.assignee_id;
   IF r_role IS NULL THEN RAISE EXCEPTION 'Assignee user % not found', NEW.assignee_id; END IF;
-  IF r_role <> 'operator' THEN RAISE EXCEPTION 'Assignee user % must have role operator (found %)', NEW.assignee_id, r_role; END IF;
+  -- Allow operator role or admin/manager roles for flexibility
+  IF r_role NOT IN ('operator', 'admin', 'manager') THEN 
+    RAISE EXCEPTION 'Assignee user % must have role operator, admin, or manager (found %)', NEW.assignee_id, r_role; 
+  END IF;
   RETURN NEW;
 END;$$ LANGUAGE plpgsql;
 

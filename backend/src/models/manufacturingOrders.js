@@ -65,10 +65,36 @@ export async function createMO({ product_id, quantity, start_date, end_date, cre
 }
 
 export async function updateMO(id, { quantity, start_date, end_date, status, assignee_id }){
+  console.log('🔄 [MO-MODEL] Updating Manufacturing Order:', { 
+    id, 
+    quantity, 
+    start_date, 
+    end_date, 
+    status, 
+    assignee_id 
+  })
+  
+  // Validate status transition if status is being updated
+  if (status) {
+    const validStatuses = ['draft', 'confirmed', 'in_progress', 'done', 'cancelled']
+    if (!validStatuses.includes(status)) {
+      throw new Error(`Invalid status: ${status}. Valid statuses are: ${validStatuses.join(', ')}`)
+    }
+  }
+  
   const res = await query('UPDATE manufacturing_orders SET quantity=COALESCE($2,quantity), start_date=COALESCE($3,start_date), end_date=COALESCE($4,end_date), status=COALESCE($5,status), assignee_id=COALESCE($6,assignee_id) WHERE id=$1 RETURNING *',[id, quantity, start_date, end_date, status, assignee_id]);
-  if(!res.rowCount) return null;
+  
+  if(!res.rowCount) {
+    console.error('❌ [MO-MODEL] No rows updated for MO:', { id })
+    return null;
+  }
   
   const mo = res.rows[0];
+  console.log('✅ [MO-MODEL] MO updated successfully:', { 
+    id: mo.id, 
+    status: mo.status, 
+    reference: formatMo(mo.id) 
+  })
   
   // Get the product name for the updated MO
   const productRes = await query('SELECT name FROM products WHERE id=$1',[mo.product_id]);
@@ -198,19 +224,32 @@ export async function deleteMO(id){
 }
 
 export async function updateMOAggregatedStatus(mo_id){
-  // Determine MO status from its work orders if MO not Cancelled
+  // Determine MO status from its work orders if MO not in a manually set state
   const moRes = await query('SELECT status FROM manufacturing_orders WHERE id=$1',[mo_id]);
   if(!moRes.rowCount) return;
   const current = moRes.rows[0].status;
+  
+  // Don't override manually set states - only update if in automatic transition states
+  if(!['confirmed', 'in_progress'].includes(current)) return;
+  
   const wos = await query('SELECT status FROM work_orders WHERE mo_id=$1',[mo_id]);
   if(wos.rowCount===0) return;
+  
   const statuses = wos.rows.map(r=>r.status);
   let newStatus = current;
-  if(statuses.some(s=>s==='cancelled')) newStatus = 'cancelled';
-  else if(statuses.every(s=>s==='done')) newStatus = 'done';
-  else if(statuses.some(s=>s==='in_progress' || s==='paused')) newStatus = 'in_progress';
-  else if(statuses.every(s=>s==='pending')) newStatus = 'confirmed';
+  
+  // Only update status based on work order states for automatic progression
+  if(statuses.some(s=>s==='cancelled')) {
+    newStatus = 'cancelled';
+  } else if(statuses.every(s=>s==='done')) {
+    newStatus = 'done';
+  } else if(statuses.some(s=>s==='in_progress' || s==='paused')) {
+    // Only auto-set to in_progress if currently confirmed
+    if(current === 'confirmed') newStatus = 'in_progress';
+  }
+  
   if(newStatus !== current){
+    console.log('🔄 [MO-STATUS] Auto-updating MO status:', { mo_id, from: current, to: newStatus })
     await query('UPDATE manufacturing_orders SET status=$2 WHERE id=$1',[mo_id,newStatus]);
   }
 }

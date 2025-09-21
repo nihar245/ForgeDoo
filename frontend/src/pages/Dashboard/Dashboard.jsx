@@ -4,11 +4,9 @@ import {
   Package, 
   Clock, 
   AlertTriangle, 
-  TrendingUp,
-  ListChecks,
-  Activity
+  TrendingUp
 } from 'lucide-react'
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
+
 import StatusBadge from '../../components/StatusBadge'
 import { reportsAPI, manufacturingOrdersAPI } from '../../services'
 // Removed throughput analytics import (no longer showing manufacturing throughput chart)
@@ -17,8 +15,6 @@ import toast from 'react-hot-toast'
 const Dashboard = () => {
   const [dashboardData, setDashboardData] = useState(null)
   const [recentOrders, setRecentOrders] = useState([])
-  // Removed productionData state (throughput chart removed)
-  const [woDistribution, setWoDistribution] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -38,15 +34,6 @@ const Dashboard = () => {
 
         if (dashboardResponse.data) {
           setDashboardData(dashboardResponse.data)
-          
-          // Work Order distribution (absolute counts)
-          const woDist = [
-            { name: 'Pending', key: 'wo_pending', value: dashboardResponse.data.wo_pending || 0, color: '#f59e0b' },
-            { name: 'In Progress', key: 'wo_in_progress', value: dashboardResponse.data.wo_in_progress || 0, color: '#3b82f6' },
-            { name: 'Paused', key: 'wo_paused', value: dashboardResponse.data.wo_paused || 0, color: '#6366f1' },
-            { name: 'Done', key: 'wo_done', value: dashboardResponse.data.wo_done || 0, color: '#10b981' }
-          ].filter(d => d.value > 0)
-          setWoDistribution(woDist)
         }
 
         if (ordersResponse.data) {
@@ -172,9 +159,6 @@ const Dashboard = () => {
   // Recent orders table rows (limit 6)
   const recentOrderRows = useMemo(() => recentOrders.slice(0,6), [recentOrders])
 
-  // Color mapping for pie slices
-  const pieColors = woDistribution.map(d => d.color)
-
   return (
     <div className="space-y-8 overflow-x-hidden max-w-[100vw]">
       {/* KPI Cards */}
@@ -205,37 +189,7 @@ const Dashboard = () => {
         ))}
       </div>
 
-      {/* Work Order Distribution (only) */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="glass p-6 rounded-xl border border-slate-200"
-      >
-        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><ListChecks className="w-5 h-5 text-green-600" /> Work Orders</h3>
-        {woDistribution.length === 0 ? (
-          <div className="text-sm text-slate-500">No work orders yet.</div>
-        ) : (
-          <div className="w-full mx-auto">
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie data={woDistribution} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} paddingAngle={3}>
-                  {woDistribution.map((entry, index) => (
-                    <Cell key={`slice-${entry.name}`} fill={pieColors[index]} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="flex flex-wrap gap-3 justify-center mt-4">
-              {woDistribution.map(d => (
-                <div key={d.name} className="flex items-center gap-1 text-xs text-slate-600">
-                  <span className="w-3 h-3 rounded-sm" style={{ background: d.color }}></span>{d.name} ({d.value})
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </motion.div>
+
 
       {/* Recent Manufacturing Orders */}
       <motion.div

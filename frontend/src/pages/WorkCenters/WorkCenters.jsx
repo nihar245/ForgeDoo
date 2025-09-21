@@ -133,7 +133,7 @@ export default function WorkCenters() {
                   <td className="py-4 px-6 font-medium text-gray-900">{workCenter.name}</td>
                   <td className="py-4 px-6 text-gray-700">{workCenter.location || '-'}</td>
                   <td className="py-4 px-6 text-gray-700">{workCenter.capacity_per_hour || 0} units</td>
-                  <td className="py-4 px-6 text-green-600 font-medium">${workCenter.cost_per_hour || 0}/hr</td>
+                  <td className="py-4 px-6 text-green-600 font-medium">₹{workCenter.cost_per_hour || 0}/hr</td>
                 </motion.tr>
               ))}
             </tbody>

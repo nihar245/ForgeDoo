@@ -73,15 +73,29 @@ const Reports = () => {
                   <tr><td colSpan={7} className="px-4 py-6 text-center text-slate-500">No work orders found</td></tr>
                 )}
                 {!woLoading && filteredWOs.map(wo => {
-                  const real = wo.real_duration_mins ?? (wo.started_at ? ((Date.now() - new Date(wo.started_at).getTime())/60000).toFixed(1) : null)
+                  // Calculate real duration with proper business logic
+                  let realDuration = null
+                  if (wo.real_duration_mins != null) {
+                    // Work order is completed, use stored duration
+                    realDuration = Number(wo.real_duration_mins).toFixed(1)
+                  } else if (wo.started_at && wo.status === 'in_progress') {
+                    // Work order is in progress, calculate current duration
+                    const currentDuration = (Date.now() - new Date(wo.started_at).getTime()) / 60000
+                    realDuration = currentDuration.toFixed(1)
+                  } else if (wo.started_at && wo.status === 'paused') {
+                    // Work order is paused, show duration up to pause (estimated)
+                    const pausedDuration = (Date.now() - new Date(wo.started_at).getTime()) / 60000
+                    realDuration = `~${pausedDuration.toFixed(1)}`
+                  }
+                  
                   return (
                     <tr key={wo.id} className="border-t border-slate-100 hover:bg-slate-50/60">
                       <td className="px-4 py-2 font-medium text-slate-800">{wo.operation_name}</td>
                       <td className="px-4 py-2 text-slate-700">{wo.work_center_name || '—'}</td>
                       <td className="px-4 py-2 text-slate-700">{wo.product_name || '—'}</td>
-                      <td className="px-4 py-2 text-slate-700">{wo.quantity || wo.mo_quantity || '-'}</td>
+                      <td className="px-4 py-2 text-slate-700 font-semibold">{wo.mo_quantity || wo.quantity || '-'}</td>
                       <td className="px-4 py-2 text-slate-700">{wo.expected_duration_mins ?? '—'}</td>
-                      <td className="px-4 py-2 text-slate-700">{real ? Number(real).toFixed(1) : '—'}</td>
+                      <td className="px-4 py-2 text-slate-700 font-medium">{realDuration || '—'}</td>
                       <td className="px-4 py-2">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${
                           wo.status === 'done' ? 'bg-green-100 text-green-700' :
@@ -89,7 +103,7 @@ const Reports = () => {
                           wo.status === 'paused' ? 'bg-amber-100 text-amber-700' :
                           wo.status === 'cancelled' ? 'bg-red-100 text-red-700' :
                           'bg-slate-100 text-slate-700'
-                        }`}>{wo.status}</span>
+                        }`}>{wo.status.replace('_', ' ')}</span>
                       </td>
                     </tr>
                   )

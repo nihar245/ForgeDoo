@@ -280,7 +280,12 @@ export async function confirm(req,res,next){
   })
   
   try {
-    const id = req.params.id;
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      console.error('❌ [MO-BACKEND] Invalid MO ID:', req.params.id)
+      throw new ApiError(400, 'Invalid Manufacturing Order ID');
+    }
+    
     console.log('🔍 [MO-BACKEND] Fetching MO for confirmation:', { id })
     
     const mo = await getMO(id);
@@ -297,31 +302,43 @@ export async function confirm(req,res,next){
     
     if(mo.status === 'cancelled') {
       console.error('❌ [MO-BACKEND] Cannot confirm cancelled MO:', { id, status: mo.status })
-      throw new ApiError(400,'Cannot confirm a cancelled MO');
+      throw new ApiError(400,'Cannot confirm a cancelled Manufacturing Order');
     }
     if(mo.status !== 'draft') {
       console.error('❌ [MO-BACKEND] Only draft MO can be confirmed:', { id, status: mo.status })
-      throw new ApiError(400, 'Only draft MO can be confirmed');
+      throw new ApiError(400, `Only draft Manufacturing Orders can be confirmed. Current status: ${mo.status}`);
     }
     
     console.log('🔄 [MO-BACKEND] Updating MO status to confirmed...')
     // Use updateMO path to stay consistent with other patch logic
-    await updateMO(id, { status: 'confirmed' });
+    const updated = await updateMO(id, { status: 'confirmed' });
+    if (!updated) {
+      console.error('❌ [MO-BACKEND] Failed to update MO status:', { id })
+      throw new ApiError(500, 'Failed to update Manufacturing Order status');
+    }
     console.log('✅ [MO-BACKEND] MO status updated to confirmed')
     
     console.log('🔄 [MO-BACKEND] Checking and reserving components...')
     try {
-      await checkAndReserveComponents(id);
-      console.log('✅ [MO-BACKEND] Components reserved successfully')
+      const reservationResult = await checkAndReserveComponents(id);
+      console.log('✅ [MO-BACKEND] Component reservation result:', reservationResult)
     } catch(reserveErr){
       console.error('⚠️ [MO-BACKEND] Component reservation failed:', reserveErr.message);
+      // Don't fail the confirmation if component reservation fails
+      // Just log the warning
     }
     
     console.log('🔄 [MO-BACKEND] Fetching refreshed MO data...')
     const refreshed = await getMO(id);
+    if (!refreshed) {
+      console.error('❌ [MO-BACKEND] Failed to fetch refreshed MO:', { id })
+      throw new ApiError(500, 'Failed to fetch updated Manufacturing Order');
+    }
+    
     console.log('✅ [MO-BACKEND] MO confirmation completed successfully:', { 
       id, 
-      status: refreshed.status 
+      status: refreshed.status,
+      reference: refreshed.reference
     })
     
     res.json({ data: refreshed });
@@ -338,7 +355,12 @@ export async function start(req,res,next){
   })
   
   try {
-    const id = req.params.id; 
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      console.error('❌ [MO-BACKEND] Invalid MO ID for start:', req.params.id)
+      throw new ApiError(400, 'Invalid Manufacturing Order ID');
+    }
+    
     console.log('🔍 [MO-BACKEND] Fetching MO for start:', { id })
     
     const mo = await getMO(id);
@@ -355,14 +377,20 @@ export async function start(req,res,next){
     
     if(!['confirmed','in_progress'].includes(mo.status)) {
       console.error('❌ [MO-BACKEND] Invalid status for start:', { id, status: mo.status })
-      throw new ApiError(400, 'Must be confirmed to start');
+      throw new ApiError(400, `Manufacturing Order must be confirmed to start. Current status: ${mo.status}`);
     }
     
     console.log('🔄 [MO-BACKEND] Setting MO status to in_progress...')
     const updated = await setMOStatus(id,'in_progress');
+    if (!updated) {
+      console.error('❌ [MO-BACKEND] Failed to update MO status for start:', { id })
+      throw new ApiError(500, 'Failed to start Manufacturing Order');
+    }
+    
     console.log('✅ [MO-BACKEND] MO started successfully:', { 
       id, 
-      newStatus: updated.status 
+      newStatus: updated.status,
+      reference: updated.reference
     })
     
     res.json({ data: updated });
@@ -381,7 +409,12 @@ export async function complete(req,res,next){
   })
   
   try {
-    const id = req.params.id; 
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      console.error('❌ [MO-BACKEND] Invalid MO ID for completion:', req.params.id)
+      throw new ApiError(400, 'Invalid Manufacturing Order ID');
+    }
+    
     console.log('🔍 [MO-BACKEND] Fetching MO for completion:', { id })
     
     const mo = await getMO(id);
@@ -396,13 +429,19 @@ export async function complete(req,res,next){
       reference: mo.reference 
     })
     
-    if(mo.status !== 'in_progress') {
+    // Allow completion from confirmed or in_progress states
+    if(!['confirmed', 'in_progress'].includes(mo.status)) {
       console.error('❌ [MO-BACKEND] Invalid status for completion:', { id, status: mo.status })
-      throw new ApiError(400, 'Only in_progress MO can be completed');
+      throw new ApiError(400, `Only confirmed or in-progress Manufacturing Orders can be completed. Current status: ${mo.status}`);
     }
     
     console.log('🔄 [MO-BACKEND] Setting MO status to done...')
     const updated = await setMOStatus(id,'done');
+    if (!updated) {
+      console.error('❌ [MO-BACKEND] Failed to update MO status for completion:', { id })
+      throw new ApiError(500, 'Failed to complete Manufacturing Order');
+    }
+    
     console.log('✅ [MO-BACKEND] MO completed successfully:', { 
       id, 
       newStatus: updated.status,

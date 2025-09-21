@@ -28,6 +28,9 @@ export default function MODetail() {
   const [persistedId, setPersistedId] = useState(null)
   const isNew = id === 'new' && !persistedId
   const isAdmin = (user?.role || '').toLowerCase() === 'admin'
+  
+  // Field locking - only allow editing if status is 'draft' or new MO
+  const isFieldsEditable = isNew || (mo?.status === 'draft') || (mo?.state === 'Draft')
 
   // Fetch products and assignees from API
   useEffect(() => {
@@ -122,15 +125,47 @@ export default function MODetail() {
       
       if (response.data) {
         console.log('✅ [MO-LOAD] Setting MO data:', response.data)
-        setMo(response.data)
-        console.log('✅ [MO-LOAD] MO loaded successfully with status:', response.data.status || response.data.state)
+        
+        // Map backend data structure to frontend data structure
+        const backendMO = response.data
+        const mappedMO = {
+          id: backendMO.id,
+          reference: backendMO.reference,
+          product: backendMO.product_name || '',
+          productId: backendMO.product_id || '',
+          quantity: backendMO.quantity || 1,
+          unit: 'pcs', // Default unit
+          state: (backendMO.status || 'draft').charAt(0).toUpperCase() + (backendMO.status || 'draft').slice(1).replace('_', ' '), // Convert to frontend format
+          status: backendMO.status || 'draft',
+          startDate: backendMO.start_date || '',
+          scheduleDate: backendMO.start_date || '',
+          deadline: backendMO.end_date || '',
+          assignee: '', // Will be populated after assignees are loaded
+          assigneeId: backendMO.assignee_id || '',
+          bomId: backendMO.bom_id || null,
+          bom: '', // Will be populated if BOM is present
+          components: [],
+          workOrders: [],
+          created_at: backendMO.created_at,
+          is_late: backendMO.is_late,
+          is_unassigned: backendMO.is_unassigned
+        }
+        
+        console.log('🔄 [MO-LOAD] Mapped MO data:', mappedMO)
+        setMo(mappedMO)
+        console.log('✅ [MO-LOAD] MO loaded successfully with status:', mappedMO.status)
       } else {
         console.error('❌ [MO-LOAD] No data in response')
         throw new Error('Manufacturing Order not found')
       }
     } catch (error) {
       console.error('❌ [MO-LOAD] Error loading MO:', error)
-      toast.error('Failed to load Manufacturing Order')
+      // Only show error toast if this isn't a refresh of already loaded data
+      if (!mo || !mo.id) {
+        toast.error('Failed to load Manufacturing Order')
+      } else {
+        console.log('⚠️ [MO-LOAD] Failed to reload MO but keeping existing data')
+      }
     } finally {
       setLoadingData(false)
       console.log('🔄 [MO-LOAD] Loading process completed')
@@ -138,7 +173,7 @@ export default function MODetail() {
   }
 
   useEffect(() => {
-    console.log('🚀 [MO-INIT] Initializing MO component:', { isNew, id })
+    console.log('🚀 [MO-INIT] Initializing MO component:', { isNew, id, persistedId })
     if (isNew) {
       console.log('📝 [MO-INIT] Creating new MO draft')
       // create a draft shell
@@ -159,7 +194,14 @@ export default function MODetail() {
       setMo(draft)
     } else {
       console.log('🔍 [MO-INIT] Loading existing MO with ID:', id)
-      loadMOFromDatabase(id)
+      // Only load from database if we don't already have this MO loaded
+      // and it's not a recently persisted MO
+      if (!mo || (mo.id !== id && id !== persistedId)) {
+        console.log('🔍 [MO-INIT] MO not loaded or ID mismatch, loading from database')
+        loadMOFromDatabase(id)
+      } else {
+        console.log('✅ [MO-INIT] MO already loaded with matching ID or recently persisted, skipping database load')
+      }
     }
   }, [id, isNew])
 
@@ -172,6 +214,26 @@ export default function MODetail() {
       }
     }
   }, [mo, products])
+
+  // Update assignee name when assignees are loaded and MO has assigneeId
+  useEffect(() => {
+    if (mo && mo.assigneeId && !mo.assignee && assignees.length > 0) {
+      const matchingAssignee = assignees.find(a => a.id == mo.assigneeId)
+      if (matchingAssignee) {
+        update({ assignee: matchingAssignee.name })
+      }
+    }
+  }, [mo, assignees])
+
+  // Update BOM name when BOMs are loaded and MO has bomId
+  useEffect(() => {
+    if (mo && mo.bomId && !mo.bom && boms.length > 0) {
+      const matchingBOM = boms.find(b => b.id == mo.bomId)
+      if (matchingBOM) {
+        update({ bom: `${matchingBOM.product_name} (v${matchingBOM.version || '1'})` })
+      }
+    }
+  }, [mo, boms])
 
   const compStatus = useMemo(() => {
     console.log('🧮 [COMPONENT] Computing component status for MO:', { 
@@ -195,24 +257,47 @@ export default function MODetail() {
 
   // Refresh server-derived data (components availability & work orders) for existing MO
   const refreshServerDerived = async (moId) => {
-    if(!moId) return
+    if(!moId) {
+      console.log('⚠️ [REFRESH-SERVER] No MO ID provided, skipping refresh')
+      return
+    }
+    
+    console.log('🔄 [REFRESH-SERVER] Starting refresh for MO:', moId)
     try {
       const [compRes, woRes] = await Promise.all([
-        api.get(`/mos/${moId}/components`).catch(()=>null),
-        api.get(`/mos/${moId}/work-orders`).catch(()=>null)
+        api.get(`/mos/${moId}/components`).catch((err) => {
+          console.error('❌ [REFRESH-SERVER] Components API failed:', err)
+          return null
+        }),
+        api.get(`/mos/${moId}/work-orders`).catch((err) => {
+          console.error('❌ [REFRESH-SERVER] Work orders API failed:', err)
+          return null
+        })
       ])
+      
+      console.log('📥 [REFRESH-SERVER] API responses:', { compRes: !!compRes, woRes: !!woRes })
+      
       const compData = compRes?.data?.data?.components || compRes?.data?.data || []
       const wos = woRes?.data?.data || []
+      
+      console.log('🔍 [REFRESH-SERVER] Extracted data:', { 
+        components: compData.length, 
+        workOrders: wos.length 
+      })
+      
       // Normalize components to UI shape
       const normComponents = compData.map(c=>({
         name: c.product_name || c.name || `Product ${c.product_id}`,
         product_id: c.product_id,
         availability: c.status === 'sufficient' ? 'Available' : (c.status === 'insufficient' ? 'Shortage' : (c.availability || 'Unknown')),
+        stockAvailable: c.available || 0,
+        stockRequired: c.required || c.quantity || c.per_output_qty || 1,
         toConsume: c.required || c.quantity || c.per_output_qty || 1,
         unit: c.uom || 'pcs',
         consumed: 0,
         unit_cost: c.unit_cost || 0
       }))
+      
       // Normalize work orders
       const normWOs = wos.map(w=>({
         operation: w.operation_name,
@@ -224,9 +309,17 @@ export default function MODetail() {
         durationReal: w.real_duration_mins || 0,
         status: (w.status || '').replace('_',' ').replace(/\b\w/g,l=>l.toUpperCase())
       }))
+      
+      console.log('✅ [REFRESH-SERVER] Updating MO with refreshed data:', {
+        components: normComponents.length,
+        workOrders: normWOs.length
+      })
+      
       setMo(prev=> prev ? { ...prev, components: normComponents, workOrders: normWOs } : prev)
     } catch(e){
-      console.warn('⚠️ Failed to refresh server derived MO data', e)
+      console.error('❌ [REFRESH-SERVER] Failed to refresh server derived MO data:', e)
+      // Don't clear components/workOrders on error - keep existing data
+      console.log('⚠️ [REFRESH-SERVER] Keeping existing components and work orders due to API error')
     }
   }
 
@@ -314,13 +407,27 @@ export default function MODetail() {
       if (!mo.productId) {
         console.warn('⚠️ [MO-SAVE] Validation failed: Missing product ID')
         toast.error('Please select a finished product')
-        return false
+        return null
       }
       
       if (!mo.quantity || mo.quantity < 1) {
         console.warn('⚠️ [MO-SAVE] Validation failed: Invalid quantity', { quantity: mo.quantity })
         toast.error('Please enter a valid quantity')
-        return false
+        return null
+      }
+
+      // Additional validation for bomId if provided
+      if (mo.bomId && isNaN(parseInt(mo.bomId))) {
+        console.warn('⚠️ [MO-SAVE] Validation failed: Invalid BOM ID', { bomId: mo.bomId })
+        toast.error('Invalid BOM selection')
+        return null
+      }
+
+      // Validate assignee if provided
+      if (mo.assigneeId && isNaN(parseInt(mo.assigneeId))) {
+        console.warn('⚠️ [MO-SAVE] Validation failed: Invalid assignee ID', { assigneeId: mo.assigneeId })
+        toast.error('Invalid assignee selection')
+        return null
       }
 
       console.log('✅ [MO-SAVE] Validation passed, proceeding with save...')
@@ -330,9 +437,9 @@ export default function MODetail() {
         // Create new MO in database with draft status
         const moData = {
           product_id: parseInt(mo.productId),
-          quantity: mo.quantity,
+          quantity: parseInt(mo.quantity),
           start_date: mo.scheduleDate || new Date().toISOString().split('T')[0],
-          end_date: mo.deadline,
+          end_date: mo.deadline || null,
           assignee_id: mo.assigneeId ? parseInt(mo.assigneeId) : null,
           bom_id: mo.bomId ? parseInt(mo.bomId) : null
         }
@@ -340,36 +447,46 @@ export default function MODetail() {
         console.log('🔄 [MO-SAVE] Creating MO with data:', moData)
         
         let response
-        if (mo.bomId) {
-          console.log('🔄 [MO-SAVE] Creating MO by BOM')
-          // Create by BOM - clean the data to remove undefined/null values
-          const bomData = {
-            bom_id: moData.bom_id,
-            quantity: moData.quantity,
-            start_date: moData.start_date
+        try {
+          if (mo.bomId) {
+            console.log('🔄 [MO-SAVE] Creating MO by BOM')
+            // Create by BOM - clean the data to remove undefined/null values
+            const bomData = {
+              bom_id: moData.bom_id,
+              quantity: moData.quantity,
+              start_date: moData.start_date
+            }
+            
+            // Only add end_date if it has a value
+            if (moData.end_date) {
+              bomData.end_date = moData.end_date
+            }
+            
+            // Only add assignee_id if it has a value
+            if (moData.assignee_id) {
+              bomData.assignee_id = moData.assignee_id
+            }
+            
+            console.log('🔄 [MO-SAVE] Cleaned BOM data for API:', bomData)
+            response = await manufacturingOrdersAPI.createByBOM(bomData)
+          } else {
+            console.log('🔄 [MO-SAVE] Creating MO by Product')
+            // Create by Product
+            response = await manufacturingOrdersAPI.createByProduct(moData)
           }
-          
-          // Only add end_date if it has a value
-          if (moData.end_date) {
-            bomData.end_date = moData.end_date
-          }
-          
-          // Only add assignee_id if it has a value
-          if (moData.assignee_id) {
-            bomData.assignee_id = moData.assignee_id
-          }
-          
-          console.log('🔄 [MO-SAVE] Cleaned BOM data for API:', bomData)
-          response = await manufacturingOrdersAPI.createByBOM(bomData)
-        } else {
-          console.log('🔄 [MO-SAVE] Creating MO by Product')
-          // Create by Product
-          response = await manufacturingOrdersAPI.createByProduct(moData)
+        } catch (apiError) {
+          console.error('❌ [MO-SAVE] API call failed:', {
+            error: apiError,
+            message: apiError?.message,
+            response: apiError?.response?.data,
+            status: apiError?.response?.status
+          })
+          throw apiError // Re-throw to be handled by outer catch
         }
 
         console.log('📥 [MO-SAVE] API response received:', response)
 
-        if (response.data) {
+        if (response && response.data) {
           console.log('✅ [MO-SAVE] MO created successfully, updating local state with database MO:', response.data)
           // Update local state with database MO
           const dbMO = response.data
@@ -424,14 +541,17 @@ export default function MODetail() {
           toast.success(`Manufacturing Order ${dbMO.reference} created successfully`)
           // No navigation (stay on same page with draft route) - consumer relies on returned object
           return dbMO
+        } else {
+          console.error('❌ [MO-SAVE] Invalid response format - missing data field:', response)
+          throw new Error('Invalid response from server - missing data field')
         }
       } else {
         console.log('📝 [MO-SAVE] Updating existing MO')
         // Update existing MO
         const updateData = {
-          quantity: mo.quantity,
-          start_date: mo.scheduleDate,
-          end_date: mo.deadline,
+          quantity: parseInt(mo.quantity),
+          start_date: mo.scheduleDate || null,
+          end_date: mo.deadline || null,
           assignee_id: mo.assigneeId ? parseInt(mo.assigneeId) : null
         }
         
@@ -439,10 +559,13 @@ export default function MODetail() {
         const response = await manufacturingOrdersAPI.update(mo.id, updateData)
         console.log('📥 [MO-SAVE] Update response received:', response)
         
-        if (response.data) {
+        if (response && response.data) {
           console.log('✅ [MO-SAVE] MO updated successfully!')
           toast.success('Manufacturing Order updated successfully')
           return response.data
+        } else {
+          console.error('❌ [MO-SAVE] Invalid update response format:', response)
+          throw new Error('Invalid response from server during update')
         }
       }
     } catch (error) {
@@ -463,11 +586,20 @@ export default function MODetail() {
         const saved = await save()
         if (!saved) {
           console.error('❌ [MO-CONFIRM] Save failed, aborting confirmation')
+          toast.error('Please save the Manufacturing Order first')
           return
         }
         targetId = saved.id
         console.log('✅ [MO-CONFIRM] Save completed, proceeding with confirmation for id:', targetId)
       }
+
+      // Validate MO is in draft state
+      if (mo.state !== 'Draft' && mo.status !== 'draft') {
+        console.error('❌ [MO-CONFIRM] MO is not in draft state:', { state: mo.state, status: mo.status })
+        toast.error('Only draft Manufacturing Orders can be confirmed')
+        return
+      }
+
       console.log('🔄 [MO-CONFIRM] Making API call to confirm MO:', targetId)
       const response = await manufacturingOrdersAPI.confirm(targetId)
       console.log('📥 [MO-CONFIRM] Confirm response received:', response)
@@ -477,62 +609,116 @@ export default function MODetail() {
         console.log('✅ [MO-CONFIRM] MO confirmed successfully, updating state:', {
           newState: 'Confirmed',
           newStatus: 'confirmed',
-          components: updatedMO.components?.length || 0,
-          workOrders: updatedMO.work_orders?.length || 0
+          reference: updatedMO.reference,
+          id: updatedMO.id
         })
         
+        // Update the local state with the confirmed MO data
+        setMo(prev => ({
+          ...prev,
+          ...updatedMO,
+          id: updatedMO.id,
+          reference: updatedMO.reference,
+          state: 'Confirmed',
+          status: 'confirmed'
+        }))
+        
+        // Set persisted ID to prevent re-loading
+        setPersistedId(updatedMO.id)
+        
         // After confirming fetch server components availability & work orders
-        await refreshServerDerived(targetId || mo.id)
-        update({ state: 'Confirmed', status: 'confirmed' })
+        console.log('🔄 [MO-CONFIRM] Refreshing server-derived data for ID:', targetId)
+        await refreshServerDerived(targetId)
         
         console.log('🎉 [MO-CONFIRM] MO confirmation completed successfully!')
-        toast.success('Manufacturing Order confirmed successfully')
+        toast.success(`Manufacturing Order ${updatedMO.reference} confirmed successfully`)
       }
     } catch (error) {
       console.error('❌ [MO-CONFIRM] Error confirming MO:', error)
-      toast.error('Failed to confirm Manufacturing Order')
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to confirm Manufacturing Order'
+      toast.error(errorMessage)
     }
   }
 
   const onStart = async () => { 
-    console.log('▶️ [MO-START] Starting MO process:', { moId: mo.id, currentState: mo.state })
+    console.log('▶️ [MO-START] Starting MO process:', { moId: mo.id, currentState: mo.state, currentStatus: mo.status })
     
     try {
+      // Validate MO can be started
+      if (!['Confirmed', 'In Progress'].includes(mo.state) && !['confirmed', 'in_progress'].includes(mo.status)) {
+        console.error('❌ [MO-START] Invalid state for start:', { state: mo.state, status: mo.status })
+        toast.error('Only confirmed Manufacturing Orders can be started')
+        return
+      }
+
       console.log('🔄 [MO-START] Making API call to start MO:', mo.id)
       const response = await manufacturingOrdersAPI.start(mo.id)
       console.log('📥 [MO-START] Start response received:', response)
       
       if (response.data) {
-        console.log('✅ [MO-START] MO started successfully, updating state to In Progress')
+        const updatedMO = response.data
+        console.log('✅ [MO-START] MO started successfully:', { 
+          newStatus: updatedMO.status,
+          reference: updatedMO.reference 
+        })
+        
+        // Update local state with backend response
+        setMo(prev => ({
+          ...prev,
+          ...updatedMO,
+          state: 'In Progress',
+          status: updatedMO.status || 'in_progress'
+        }))
+        
         await refreshServerDerived(mo.id)
-        update({ state: 'In Progress', status: 'in_progress' })
         console.log('🎉 [MO-START] MO start process completed!')
-        toast.success('Manufacturing Order started')
+        toast.success(`Manufacturing Order ${updatedMO.reference} started successfully`)
       }
     } catch (error) {
       console.error('❌ [MO-START] Error starting MO:', error)
-      toast.error('Failed to start Manufacturing Order')
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to start Manufacturing Order'
+      toast.error(errorMessage)
     }
   }
 
   const onProduce = async () => { 
-    console.log('🏁 [MO-PRODUCE] Starting MO production/completion process:', { moId: mo.id, currentState: mo.state })
+    console.log('🏁 [MO-PRODUCE] Starting MO production/completion process:', { moId: mo.id, currentState: mo.state, currentStatus: mo.status })
     
     try {
+      // Validate MO can be completed
+      if (!['To Close', 'In Progress', 'Confirmed'].includes(mo.state) && !['in_progress', 'confirmed'].includes(mo.status)) {
+        console.error('❌ [MO-PRODUCE] Invalid state for completion:', { state: mo.state, status: mo.status })
+        toast.error('Only in-progress Manufacturing Orders can be completed')
+        return
+      }
+
       console.log('🔄 [MO-PRODUCE] Making API call to complete MO:', mo.id)
       const response = await manufacturingOrdersAPI.complete(mo.id)
       console.log('📥 [MO-PRODUCE] Complete response received:', response)
       
       if (response.data) {
-        console.log('✅ [MO-PRODUCE] MO completed successfully, updating state to Done')
+        const updatedMO = response.data
+        console.log('✅ [MO-PRODUCE] MO completed successfully:', { 
+          newStatus: updatedMO.status,
+          reference: updatedMO.reference 
+        })
+        
+        // Update local state with backend response
+        setMo(prev => ({
+          ...prev,
+          ...updatedMO,
+          state: 'Done',
+          status: updatedMO.status || 'done'
+        }))
+        
         await refreshServerDerived(mo.id)
-        update({ state: 'Done', status: 'done' })
         console.log('🎉 [MO-PRODUCE] MO production process completed!')
-        toast.success('Manufacturing Order completed successfully')
+        toast.success(`Manufacturing Order ${updatedMO.reference} completed successfully`)
       }
     } catch (error) {
       console.error('❌ [MO-PRODUCE] Error completing MO:', error)
-      toast.error('Failed to complete Manufacturing Order')
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to complete Manufacturing Order'
+      toast.error(errorMessage)
     }
   }
 
@@ -639,8 +825,8 @@ export default function MODetail() {
                       product: selectedProduct ? selectedProduct.name : ''
                     })
                   }} 
-                  className="neomorphism-inset w-full pl-9 pr-3 py-2 rounded-lg"
-                  disabled={loadingData}
+                  className={`neomorphism-inset w-full pl-9 pr-3 py-2 rounded-lg ${!isFieldsEditable ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={loadingData || !isFieldsEditable}
                 >
                   <option value="" disabled>Select finished product</option>
                   {products.length === 0 && !loadingData && (
@@ -659,7 +845,7 @@ export default function MODetail() {
             <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Quantity *</label>
-                <input type="number" min={1} value={mo.quantity} onChange={e=>update({quantity: Number(e.target.value)})} className="neomorphism-inset w-full px-3 py-2 rounded-lg" />
+                <input type="number" min={1} value={mo.quantity} onChange={e=>update({quantity: Number(e.target.value)})} className={`neomorphism-inset w-full px-3 py-2 rounded-lg ${!isFieldsEditable ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={!isFieldsEditable} />
               </div>
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Units</label>
@@ -673,8 +859,8 @@ export default function MODetail() {
                 <select 
                   value={mo.bomId || ''} 
                   onChange={e => handleBOMSelection(e.target.value)} 
-                  className="neomorphism-inset w-full pl-9 pr-3 py-2 rounded-lg"
-                  disabled={loadingData}
+                  className={`neomorphism-inset w-full pl-9 pr-3 py-2 rounded-lg ${!isFieldsEditable ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={loadingData || !isFieldsEditable}
                 >
                   <option value="">Select BOM (optional)</option>
                   {boms.map(bom => (
@@ -707,17 +893,28 @@ export default function MODetail() {
               <label className="block text-sm text-gray-600 mb-1">Schedule Date *</label>
               <div className="relative">
                 <Calendar className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input type="date" value={mo.scheduleDate || ''} onChange={e=>update({scheduleDate: e.target.value})} className="neomorphism-inset w-full pl-9 pr-3 py-2 rounded-lg" />
+                <input type="date" value={mo.scheduleDate || ''} onChange={e=>update({scheduleDate: e.target.value})} className={`neomorphism-inset w-full pl-9 pr-3 py-2 rounded-lg ${!isFieldsEditable ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={!isFieldsEditable} />
               </div>
             </div>
             <div>
               <label className="block text-sm text-gray-600 mb-1">Assignee</label>
               <div className="relative">
                 <User className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <select value={mo.assignee || ''} onChange={e=>update({assignee: e.target.value})} className="neomorphism-inset w-full pl-9 pr-3 py-2 rounded-lg">
+                <select 
+                  value={mo.assigneeId || ''} 
+                  onChange={e => {
+                    const selectedAssignee = assignees.find(a => a.id == e.target.value)
+                    update({
+                      assigneeId: e.target.value,
+                      assignee: selectedAssignee ? selectedAssignee.name : ''
+                    })
+                  }} 
+                  className={`neomorphism-inset w-full pl-9 pr-3 py-2 rounded-lg ${!isFieldsEditable ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={!isFieldsEditable}
+                >
                   <option value="">Select assignee</option>
                   {assignees.map(a => (
-                    <option key={a.id} value={a.name}>{a.name}</option>
+                    <option key={a.id} value={a.id}>{a.name}</option>
                   ))}
                 </select>
               </div>
@@ -746,6 +943,7 @@ export default function MODetail() {
                 <tr>
                   <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Components</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Availability</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Stock (Available/Required)</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">To Consume</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Units</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Unit Cost</th>
@@ -760,9 +958,20 @@ export default function MODetail() {
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                         c.availability === 'Available' 
                           ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
+                          : c.availability === 'Shortage'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-yellow-100 text-yellow-800'
                       }`}>
                         {c.availability}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={`font-medium ${
+                        c.availability === 'Available' 
+                          ? 'text-green-700' 
+                          : 'text-red-700'
+                      }`}>
+                        {c.stockAvailable || 0} / {c.stockRequired || c.toConsume}
                       </span>
                     </td>
                     <td className="py-3 px-4">{c.toConsume}</td>
