@@ -5,10 +5,10 @@ A comprehensive Manufacturing Resource Planning (ERP) system built with modern w
 ## 🏗️ System Architecture
 
 <div align="center">
-  <img src="system-architecture.jpg" alt="ForgeDoo System Architecture" width="800"/>
+  <img src="https://raw.githubusercontent.com/nihar245/ForgeDoo/main/system-architecture.jpg" 
+       alt="ForgeDoo System Architecture" width="800"/>
   <p><em>High-level system architecture showing frontend, backend, and database layers</em></p>
 </div>
-
 
 ## 🏢 Team Information
 
